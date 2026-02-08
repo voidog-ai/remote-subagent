@@ -29,7 +29,7 @@ export class TaskExecutor {
       config.allowedPaths,
       config.deniedCommands,
     );
-    this.claude = new ClaudeSession(config.claudeModel);
+    this.claude = new ClaudeSession(config.claudeModel, config.claudePath);
   }
 
   setOnProgress(callback: (progress: TaskProgress) => void): void {

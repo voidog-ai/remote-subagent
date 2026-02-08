@@ -9,6 +9,8 @@ export interface AgentConfig {
   deniedCommands: string[];
   // Platform
   defaultShell: string;
+  // Claude
+  claudePath: string;
   // Task
   maxQueueSize: number;
   maxTaskTimeoutMs: number;
@@ -34,6 +36,7 @@ export function loadConfig(): AgentConfig {
     deniedCommands: process.env.DENIED_COMMANDS
       ? process.env.DENIED_COMMANDS.split(",").map((c) => c.trim())
       : ["rm -rf /", "shutdown", "reboot", "mkfs"],
+    claudePath: process.env.CLAUDE_PATH || "claude",
     defaultShell,
     maxQueueSize: parseInt(process.env.MAX_QUEUE_SIZE || "10", 10),
     maxTaskTimeoutMs: parseInt(

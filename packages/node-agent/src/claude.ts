@@ -13,10 +13,12 @@ export class ClaudeSession {
   private currentExecution: TaskExecution | null = null;
   private sessionId: string | undefined;
   private model: string;
+  private claudePath: string;
   private outputBuffer = "";
 
-  constructor(model: string) {
+  constructor(model: string, claudePath = "claude") {
     this.model = model;
+    this.claudePath = claudePath;
   }
 
   async executeTask(
@@ -59,7 +61,7 @@ export class ClaudeSession {
 
       const cwd = task.cwd || process.cwd();
 
-      const claudeProcess = spawn("claude", args, {
+      const claudeProcess = spawn(this.claudePath, args, {
         cwd,
         signal: abortController.signal,
         env: { ...process.env },
