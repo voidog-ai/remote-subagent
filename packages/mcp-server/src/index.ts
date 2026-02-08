@@ -4,9 +4,6 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { SocketClient } from "./socket-client.js";
 import { registerListNodes } from "./tools/list-nodes.js";
 import { registerSendPrompt } from "./tools/send-prompt.js";
-import { registerExecuteCommand } from "./tools/execute-command.js";
-import { registerReadRemoteFile } from "./tools/read-remote-file.js";
-import { registerWriteRemoteFile } from "./tools/write-remote-file.js";
 import { registerBroadcastPrompt } from "./tools/broadcast-prompt.js";
 import { registerCancelTask } from "./tools/cancel-task.js";
 
@@ -33,9 +30,6 @@ const socketClient = new SocketClient(masterUrl, nodeId, token);
 // Register all tools
 registerListNodes(mcpServer, socketClient);
 registerSendPrompt(mcpServer, socketClient);
-registerExecuteCommand(mcpServer, socketClient);
-registerReadRemoteFile(mcpServer, socketClient);
-registerWriteRemoteFile(mcpServer, socketClient);
 registerBroadcastPrompt(mcpServer, socketClient);
 registerCancelTask(mcpServer, socketClient);
 

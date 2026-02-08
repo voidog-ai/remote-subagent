@@ -12,7 +12,7 @@
   const masterUrl = window.__MASTER_URL__;
   const dashboardSecret = window.__DASHBOARD_SECRET__;
   let autoScroll = true;
-  let currentTab = "prompt";
+
   const commandHistory = [];
 
   // --- Socket.IO Connection (ADR-15: /dashboard namespace) ---
@@ -266,61 +266,17 @@
     if (currentValue) select.value = currentValue;
   }
 
-  window.switchTab = function (tab) {
-    currentTab = tab;
-    document.querySelectorAll(".tab-btn").forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.tab === tab);
-    });
-    document.querySelectorAll(".tab-content").forEach((content) => {
-      content.classList.toggle("active", content.id === "tab-" + tab);
-    });
-
-    // Show/hide CWD group
-    const cwdGroup = document.getElementById("cwd-group");
-    if (cwdGroup) {
-      cwdGroup.style.display =
-        tab === "prompt" || tab === "shell" ? "flex" : "none";
-    }
-  };
-
   window.executeCommand = function () {
     const target = document.getElementById("console-target")?.value;
     if (!target) return;
 
-    let type = currentTab;
-    let payload = {};
+    const prompt = document.getElementById("input-prompt")?.value?.trim();
+    if (!prompt) return;
 
-    switch (type) {
-      case "prompt": {
-        const prompt = document.getElementById("input-prompt")?.value?.trim();
-        if (!prompt) return;
-        payload = { type: "prompt", prompt };
-        const cwd = document.getElementById("input-cwd")?.value?.trim();
-        if (cwd) payload.cwd = cwd;
-        break;
-      }
-      case "shell": {
-        const command = document.getElementById("input-command")?.value?.trim();
-        if (!command) return;
-        payload = { type: "shell", command };
-        const cwd = document.getElementById("input-cwd")?.value?.trim();
-        if (cwd) payload.cwd = cwd;
-        break;
-      }
-      case "file_read": {
-        const filePath = document.getElementById("input-filepath-read")?.value?.trim();
-        if (!filePath) return;
-        payload = { type: "file_read", filePath };
-        break;
-      }
-      case "file_write": {
-        const filePath = document.getElementById("input-filepath-write")?.value?.trim();
-        const content = document.getElementById("input-filecontent")?.value || "";
-        if (!filePath) return;
-        payload = { type: "file_write", filePath, content };
-        break;
-      }
-    }
+    const type = "prompt";
+    const payload = { type: "prompt", prompt };
+    const cwd = document.getElementById("input-cwd")?.value?.trim();
+    if (cwd) payload.cwd = cwd;
 
     // Show spinner
     const results = document.getElementById("console-results");
@@ -385,9 +341,6 @@
         ? `<div class="result-body">${esc(result.result || "")}</div>`
         : `<div class="result-body error">${esc(result.error?.code || "ERROR")}: ${esc(result.error?.message || "Unknown error")}</div>`;
 
-      const existing = results.innerHTML;
-      const isSpinner = existing.includes("result-spinner");
-
       const html = `
         <div class="result-header">
           <span class="result-source">${esc(result.targetNodeId)}</span>
@@ -398,6 +351,7 @@
         ${body}
       `;
 
+      const isSpinner = results.innerHTML.includes("result-spinner");
       if (isSpinner) {
         results.innerHTML = html;
       } else {
@@ -421,25 +375,7 @@
   }
 
   function handleTaskProgress(progress) {
-    if (!pendingTaskIds.has(progress.taskId)) return;
-
-    const results = document.getElementById("console-results");
-    if (!results) return;
-
-    // Replace spinner with partial content
-    const spinner = results.querySelector(".result-spinner");
-    if (spinner) {
-      spinner.remove();
-      const partial = document.createElement("div");
-      partial.className = "result-body";
-      partial.id = "partial-" + progress.taskId;
-      results.appendChild(partial);
-    }
-
-    const partialEl = document.getElementById("partial-" + progress.taskId);
-    if (partialEl && progress.type === "partial_result") {
-      partialEl.textContent += progress.content;
-    }
+    // Keep spinner visible until final result arrives
   }
 
   function updateHistoryList() {
@@ -464,7 +400,7 @@
           <div class="history-command">${esc(getCommandPreview(h))}</div>
         </div>
         <div class="history-meta">
-          <span class="history-type-badge">${h.type}</span>
+          <span class="history-type-badge">prompt</span>
           ${h.durationMs ? `<span>${h.durationMs}ms</span>` : ""}
         </div>
       </div>
@@ -474,50 +410,15 @@
   }
 
   function getCommandPreview(h) {
-    switch (h.type) {
-      case "prompt":
-        return (h.payload.prompt || "").slice(0, 50);
-      case "shell":
-        return h.payload.command || "";
-      case "file_read":
-        return h.payload.filePath || "";
-      case "file_write":
-        return h.payload.filePath || "";
-      default:
-        return "";
-    }
+    return (h.payload.prompt || "").slice(0, 50);
   }
 
   window.restoreCommand = function (h) {
     const targetEl = document.getElementById("console-target");
     if (targetEl) targetEl.value = h.target;
 
-    window.switchTab(h.type);
-
-    switch (h.type) {
-      case "prompt": {
-        const el = document.getElementById("input-prompt");
-        if (el) el.value = h.payload.prompt || "";
-        break;
-      }
-      case "shell": {
-        const el = document.getElementById("input-command");
-        if (el) el.value = h.payload.command || "";
-        break;
-      }
-      case "file_read": {
-        const el = document.getElementById("input-filepath-read");
-        if (el) el.value = h.payload.filePath || "";
-        break;
-      }
-      case "file_write": {
-        const path = document.getElementById("input-filepath-write");
-        const content = document.getElementById("input-filecontent");
-        if (path) path.value = h.payload.filePath || "";
-        if (content) content.value = h.payload.content || "";
-        break;
-      }
-    }
+    const el = document.getElementById("input-prompt");
+    if (el) el.value = h.payload.prompt || "";
   };
 
   window.clearConsole = function () {

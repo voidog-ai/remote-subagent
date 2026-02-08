@@ -152,13 +152,15 @@ export class MessageRouter {
 
     // Route result back to source
     if (pending.request.sourceNodeId === "dashboard") {
+      // Dashboard-originated task: send result to dashboard only
       this.io.of("/dashboard").emit(DASHBOARD_S2C.TASK_UPDATE, taskResult);
-    } else if (pending.sourceSocket?.connected) {
-      pending.sourceSocket.emit(S2C.TASK_RESPONSE, taskResult);
+    } else {
+      // MCP/agent-originated task: send result to source, and also notify dashboard
+      if (pending.sourceSocket?.connected) {
+        pending.sourceSocket.emit(S2C.TASK_RESPONSE, taskResult);
+      }
+      this.io.of("/dashboard").emit(DASHBOARD_S2C.TASK_UPDATE, taskResult);
     }
-
-    // Also notify dashboard
-    this.io.of("/dashboard").emit(DASHBOARD_S2C.TASK_UPDATE, taskResult);
 
     const status = taskResult.success ? "completed" : "failed";
     this.logger.info(

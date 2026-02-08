@@ -35,81 +35,15 @@ export const ConsoleView: FC<ConsoleProps> = ({ nodes, selectedTarget }) => {
             </select>
           </div>
 
-          {/* Command Type Tabs */}
-          <div class="console-tabs">
-            <button
-              class="tab-btn active"
-              data-tab="prompt"
-              onclick="switchTab('prompt')"
-            >
-              Prompt
-            </button>
-            <button
-              class="tab-btn"
-              data-tab="shell"
-              onclick="switchTab('shell')"
-            >
-              Shell
-            </button>
-            <button
-              class="tab-btn"
-              data-tab="file_read"
-              onclick="switchTab('file_read')"
-            >
-              File Read
-            </button>
-            <button
-              class="tab-btn"
-              data-tab="file_write"
-              onclick="switchTab('file_write')"
-            >
-              File Write
-            </button>
-          </div>
-
           {/* Input Areas */}
           <div class="console-input-area">
-            <div id="tab-prompt" class="tab-content active">
-              <textarea
-                id="input-prompt"
-                class="console-textarea"
-                rows={6}
-                placeholder="Enter prompt for remote Claude..."
-              />
-            </div>
-            <div id="tab-shell" class="tab-content">
-              <input
-                type="text"
-                id="input-command"
-                class="console-input"
-                placeholder="Enter shell command..."
-                onkeydown="if(event.ctrlKey && event.key==='Enter')executeCommand()"
-              />
-            </div>
-            <div id="tab-file_read" class="tab-content">
-              <input
-                type="text"
-                id="input-filepath-read"
-                class="console-input"
-                placeholder="Absolute file path on target machine..."
-              />
-            </div>
-            <div id="tab-file_write" class="tab-content">
-              <input
-                type="text"
-                id="input-filepath-write"
-                class="console-input"
-                placeholder="Absolute file path on target machine..."
-              />
-              <textarea
-                id="input-filecontent"
-                class="console-textarea"
-                rows={6}
-                placeholder="File content..."
-              />
-            </div>
+            <textarea
+              id="input-prompt"
+              class="console-textarea"
+              rows={6}
+              placeholder="Enter prompt for remote Claude..."
+            />
 
-            {/* CWD (only for prompt/shell) */}
             <div id="cwd-group" class="input-group">
               <label>Working Directory (optional)</label>
               <input

@@ -114,7 +114,7 @@ export class NodeAgent {
       arch: process.arch,
       nodeVersion: process.version,
       connectionType: "agent",
-      capabilities: ["prompt", "shell", "file_read", "file_write"],
+      capabilities: ["prompt"],
       token: this.config.token,
     };
 

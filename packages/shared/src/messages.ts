@@ -41,30 +41,7 @@ export const PromptPayloadSchema = z.object({
   maxTurns: z.number().int().positive().optional(),
 });
 
-export const ShellPayloadSchema = z.object({
-  type: z.literal("shell"),
-  command: z.string().min(1),
-  cwd: z.string().optional(),
-  timeoutMs: z.number().int().positive().optional(),
-});
-
-export const FileReadPayloadSchema = z.object({
-  type: z.literal("file_read"),
-  filePath: z.string().min(1),
-});
-
-export const FileWritePayloadSchema = z.object({
-  type: z.literal("file_write"),
-  filePath: z.string().min(1),
-  content: z.string(),
-});
-
-export const TaskPayloadSchema = z.discriminatedUnion("type", [
-  PromptPayloadSchema,
-  ShellPayloadSchema,
-  FileReadPayloadSchema,
-  FileWritePayloadSchema,
-]);
+export const TaskPayloadSchema = PromptPayloadSchema;
 
 // --- Task Request Schema (ADR-17: intentional redundancy with refine) ---
 export const TaskRequestSchema = z
@@ -72,7 +49,7 @@ export const TaskRequestSchema = z
     taskId: z.string().min(1),
     sourceNodeId: z.string().min(1),
     targetNodeId: z.string().min(1),
-    type: z.enum(["prompt", "shell", "file_read", "file_write"]),
+    type: z.literal("prompt"),
     payload: TaskPayloadSchema,
     context: z.string().optional(),
     createdAt: z.string(),
@@ -91,8 +68,6 @@ export const TaskErrorSchema = z.object({
     "NODE_OFFLINE",
     "QUEUE_FULL",
     "EXECUTION_ERROR",
-    "PATH_DENIED",
-    "COMMAND_DENIED",
     "SDK_ERROR",
     "CONNECTION_ERROR",
     "AUTH_FAILED",

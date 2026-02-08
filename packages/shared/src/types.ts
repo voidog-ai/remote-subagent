@@ -39,31 +39,9 @@ export interface PromptPayload {
   maxTurns?: number;
 }
 
-export interface ShellPayload {
-  type: "shell";
-  command: string;
-  cwd?: string;
-  timeoutMs?: number;
-}
+export type TaskPayload = PromptPayload;
 
-export interface FileReadPayload {
-  type: "file_read";
-  filePath: string;
-}
-
-export interface FileWritePayload {
-  type: "file_write";
-  filePath: string;
-  content: string;
-}
-
-export type TaskPayload =
-  | PromptPayload
-  | ShellPayload
-  | FileReadPayload
-  | FileWritePayload;
-
-export type TaskType = "prompt" | "shell" | "file_read" | "file_write";
+export type TaskType = "prompt";
 
 // --- Task Request ---
 export interface TaskRequest {
