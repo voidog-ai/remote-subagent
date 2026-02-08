@@ -45,6 +45,8 @@ export class ClaudeSession {
       };
 
       // Build claude command args
+      // CLI usage: claude [options] [prompt]
+      // Prompt is passed as a positional argument, not --prompt
       const args = [
         "--print",
         "--output-format",
@@ -57,7 +59,8 @@ export class ClaudeSession {
         args.push("--max-turns", String(task.maxTurns));
       }
 
-      args.push("--prompt", fullPrompt);
+      // Prompt as positional argument (last)
+      args.push(fullPrompt);
 
       const cwd = task.cwd || process.cwd();
 
