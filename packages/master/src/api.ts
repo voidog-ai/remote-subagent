@@ -27,6 +27,11 @@ export class RestApi {
   handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const url = new URL(req.url || "/", `http://${req.headers.host}`);
 
+    // Let Socket.IO handle its own requests
+    if (url.pathname.startsWith("/socket.io/")) {
+      return;
+    }
+
     // Only handle /api/* routes
     if (!url.pathname.startsWith("/api/")) {
       res.writeHead(404, { "Content-Type": "application/json" });
