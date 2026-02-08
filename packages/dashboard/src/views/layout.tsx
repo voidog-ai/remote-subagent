@@ -1,0 +1,50 @@
+import type { FC } from "hono/jsx";
+import { Nav } from "../components/nav.js";
+
+interface LayoutProps {
+  title: string;
+  active: string;
+  masterUrl: string;
+  dashboardSecret: string;
+  children: any;
+}
+
+export const Layout: FC<LayoutProps> = ({
+  title,
+  active,
+  masterUrl,
+  dashboardSecret,
+  children,
+}) => {
+  return (
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{title} - RemoteSubagent</title>
+        <link rel="stylesheet" href="/public/styles.css" />
+      </head>
+      <body>
+        <div class="app-layout">
+          <Nav active={active} />
+          <main class="main-content">{children}</main>
+        </div>
+
+        {/* Socket.IO + HTMX scripts (ADR-15) */}
+        <script
+          src={`${masterUrl}/socket.io/socket.io.js`}
+          crossorigin="anonymous"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.__MASTER_URL__ = ${JSON.stringify(masterUrl)};
+              window.__DASHBOARD_SECRET__ = ${JSON.stringify(dashboardSecret)};
+            `,
+          }}
+        />
+        <script src="/public/app.js" />
+      </body>
+    </html>
+  );
+};

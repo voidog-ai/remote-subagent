@@ -1,0 +1,29 @@
+{
+  "name": "remote-subagent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "packages/master",
+    "packages/node-agent",
+    "packages/mcp-server",
+    "packages/dashboard"
+  ],
+  "scripts": {
+    "build": "npm run build:shared && npm run build:master && npm run build:node-agent && npm run build:mcp-server && npm run build:dashboard",
+    "build:shared": "npm run build -w packages/shared",
+    "build:master": "npm run build -w packages/master",
+    "build:node-agent": "npm run build -w packages/node-agent",
+    "build:mcp-server": "npm run build -w packages/mcp-server",
+    "build:dashboard": "npm run build -w packages/dashboard",
+    "dev:master": "npm run dev -w packages/master",
+    "dev:dashboard": "npm run dev -w packages/dashboard",
+    "dev:node-agent": "npm run dev -w packages/node-agent",
+    "start:master": "node packages/master/dist/index.js",
+    "start:dashboard": "node packages/dashboard/dist/index.js",
+    "start:node-agent": "node packages/node-agent/dist/index.js",
+    "start:mcp-server": "node packages/mcp-server/dist/index.js",
+    "generate-token": "node packages/master/dist/generate-token.js"
+  }
+}

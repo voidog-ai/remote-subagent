@@ -1,0 +1,9 @@
+export const HEARTBEAT_INTERVAL_MS = 10_000;
+export const MCP_HEARTBEAT_INTERVAL_MS = 30_000;
+export const MCP_TTL_MS = 60_000;
+export const SOCKET_MAX_BUFFER_SIZE = 50 * 1024 * 1024; // 50MB
+export const DEFAULT_TASK_TIMEOUT_MS = 300_000; // 5 minutes
+export const MAX_QUEUE_SIZE = 10;
+export const LOG_BUFFER_SIZE = 10_000;
+export const TASK_RESULT_MAX_LENGTH = 500 * 1024; // 500KB
+export const TASK_HISTORY_MAX_SIZE = 1000;
