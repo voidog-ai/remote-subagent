@@ -15,6 +15,7 @@ interface PageEnv {
 
 export function createPageRoutes(
   masterUrl: string,
+  masterPublicUrl: string,
   dashboardSecret: string,
 ) {
   const pages = new Hono<PageEnv>();
@@ -37,6 +38,7 @@ export function createPageRoutes(
         title="Dashboard"
         active="/"
         masterUrl={masterUrl}
+        masterPublicUrl={masterPublicUrl}
         dashboardSecret={dashboardSecret}
       >
         <DashboardView nodes={nodes} metrics={metrics} />
@@ -53,6 +55,7 @@ export function createPageRoutes(
         title="Nodes"
         active="/nodes"
         masterUrl={masterUrl}
+        masterPublicUrl={masterPublicUrl}
         dashboardSecret={dashboardSecret}
       >
         <NodesView nodes={nodes} />
@@ -70,6 +73,7 @@ export function createPageRoutes(
         title="Logs"
         active="/logs"
         masterUrl={masterUrl}
+        masterPublicUrl={masterPublicUrl}
         dashboardSecret={dashboardSecret}
       >
         <LogsView logs={logs} sources={sources} />
@@ -87,6 +91,7 @@ export function createPageRoutes(
         title="Console"
         active="/console"
         masterUrl={masterUrl}
+        masterPublicUrl={masterPublicUrl}
         dashboardSecret={dashboardSecret}
       >
         <ConsoleView nodes={nodes} selectedTarget={selectedTarget} />
@@ -104,6 +109,7 @@ export function createPageRoutes(
         title="Settings"
         active="/settings"
         masterUrl={masterUrl}
+        masterPublicUrl={masterPublicUrl}
         dashboardSecret={dashboardSecret}
       >
         <SettingsView

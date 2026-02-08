@@ -5,6 +5,7 @@ interface LayoutProps {
   title: string;
   active: string;
   masterUrl: string;
+  masterPublicUrl: string;
   dashboardSecret: string;
   children: any;
 }
@@ -13,6 +14,7 @@ export const Layout: FC<LayoutProps> = ({
   title,
   active,
   masterUrl,
+  masterPublicUrl,
   dashboardSecret,
   children,
 }) => {
@@ -32,13 +34,13 @@ export const Layout: FC<LayoutProps> = ({
 
         {/* Socket.IO + HTMX scripts (ADR-15) */}
         <script
-          src={`${masterUrl}/socket.io/socket.io.js`}
+          src={`${masterPublicUrl}/socket.io/socket.io.js`}
           crossorigin="anonymous"
         />
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              window.__MASTER_URL__ = ${JSON.stringify(masterUrl)};
+              window.__MASTER_URL__ = ${JSON.stringify(masterPublicUrl)};
               window.__DASHBOARD_SECRET__ = ${JSON.stringify(dashboardSecret)};
             `,
           }}

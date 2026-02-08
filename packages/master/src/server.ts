@@ -185,7 +185,7 @@ export async function startMasterServer(config: MasterConfig) {
   });
 
   dashboardNsp.on("connection", (socket) => {
-    logger.debug("server", `Dashboard client connected: ${socket.id}`);
+    logger.info("server", `Dashboard client connected: ${socket.id}`);
 
     socket.on(DASHBOARD_C2S.SUBSCRIBE, () => {
       // Send current state
@@ -193,7 +193,7 @@ export async function startMasterServer(config: MasterConfig) {
     });
 
     socket.on("disconnect", () => {
-      logger.debug("server", `Dashboard client disconnected: ${socket.id}`);
+      logger.info("server", `Dashboard client disconnected: ${socket.id}`);
     });
   });
 

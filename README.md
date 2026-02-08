@@ -135,6 +135,94 @@ broadcast_prompt prompt="Report your Node.js version"
 cancel_task task_id="abc-123"
 ```
 
+## Reverse Proxy Setup
+
+When exposing the dashboard through a reverse proxy (Nginx, Caddy, etc.), you need to proxy both the dashboard and the master server's Socket.IO endpoint on the same domain. The dashboard uses Socket.IO to receive real-time updates (node status, task results, logs), and the browser must be able to reach the master's `/socket.io/` path from the same origin as the dashboard.
+
+### Environment Variable
+
+Set `MASTER_PUBLIC_URL` to control the Socket.IO connection URL seen by the browser:
+
+```env
+# Server-side: used by dashboard backend to proxy API calls to master
+MASTER_URL=http://localhost:3100
+
+# Browser-side: used by the browser to connect Socket.IO
+# Set to empty string when using a reverse proxy on the same domain
+MASTER_PUBLIC_URL=
+```
+
+When `MASTER_PUBLIC_URL` is empty, the browser connects Socket.IO to the same origin as the dashboard page (e.g., `https://remote.example.com/socket.io/`). If not set, it defaults to `MASTER_URL`.
+
+### Nginx Example
+
+```nginx
+upstream remote_dashboard {
+    server 127.0.0.1:3200;
+    keepalive 64;
+}
+
+upstream remote_master {
+    server 127.0.0.1:3100;   # or your MASTER_PORT
+    keepalive 64;
+}
+
+server {
+    listen 80;
+    server_name remote.example.com;
+
+    # Proxy Socket.IO to master server (must be before location /)
+    location /socket.io/ {
+        proxy_pass http://remote_master;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
+    # All other requests to dashboard
+    location / {
+        proxy_pass http://remote_dashboard;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Accept-Encoding gzip;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+}
+```
+
+### Why This is Needed
+
+The dashboard page is served by the Hono app (port 3200), but real-time events (node updates, task results, log streaming) are delivered via Socket.IO from the master server (port 3100). Without the `/socket.io/` proxy rule:
+
+- The browser cannot load `/socket.io/socket.io.js` (the client library)
+- WebSocket connections to the `/dashboard` namespace fail
+- The Console page shows "Executing..." indefinitely because task results are never received
+
+### Caddy Example
+
+```
+remote.example.com {
+    handle /socket.io/* {
+        reverse_proxy localhost:3100
+    }
+    handle {
+        reverse_proxy localhost:3200
+    }
+}
+```
+
 ## Dashboard
 
 Access at `http://your-server:3200` (Basic Auth protected).

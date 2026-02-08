@@ -12,6 +12,7 @@ const port = parseInt(process.env.DASHBOARD_PORT || "3200", 10);
 const username = process.env.DASHBOARD_USER || "admin";
 const password = process.env.DASHBOARD_PASSWORD || "changeme";
 const masterUrl = process.env.MASTER_URL || "http://localhost:3100";
+const masterPublicUrl = process.env.MASTER_PUBLIC_URL ?? masterUrl;
 const dashboardSecret =
   process.env.DASHBOARD_SECRET || "dev-dashboard-secret";
 
@@ -47,7 +48,7 @@ app.use("*", basicAuth(username, password));
 app.route("/api", createApiRoutes(masterUrl, dashboardSecret));
 
 // Page routes
-app.route("/", createPageRoutes(masterUrl, dashboardSecret));
+app.route("/", createPageRoutes(masterUrl, masterPublicUrl, dashboardSecret));
 
 console.log(`Dashboard starting on port ${port}`);
 console.log(`Master URL: ${masterUrl}`);

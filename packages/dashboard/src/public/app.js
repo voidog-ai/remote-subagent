@@ -19,7 +19,7 @@
   let socket = null;
 
   function connectSocket() {
-    if (!masterUrl || !dashboardSecret) {
+    if (masterUrl === undefined || masterUrl === null || !dashboardSecret) {
       console.warn("Missing master URL or dashboard secret");
       return;
     }
