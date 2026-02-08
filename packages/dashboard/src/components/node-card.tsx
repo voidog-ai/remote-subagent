@@ -93,7 +93,7 @@ export const NodeCard: FC<NodeCardProps> = ({ node, compact }) => {
             <span class="detail-label">Heartbeat</span>
             <span class="detail-value" data-heartbeat={node.nodeId}>
               {node.lastHeartbeat
-                ? new Date(node.lastHeartbeat).toLocaleTimeString()
+                ? node.lastHeartbeat
                 : "never"}
             </span>
           </div>

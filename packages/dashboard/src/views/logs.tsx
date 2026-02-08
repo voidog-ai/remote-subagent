@@ -77,8 +77,8 @@ export const LogsView: FC<LogsProps> = ({ logs, sources }) => {
         ) : (
           logs.slice(-500).map((entry) => (
             <div class={`log-entry log-${entry.level}`}>
-              <span class="log-timestamp">
-                {new Date(entry.timestamp).toLocaleTimeString()}
+              <span class="log-timestamp" data-ts={entry.timestamp}>
+                {entry.timestamp}
               </span>
               <span class={`log-level log-level-${entry.level}`}>
                 {entry.level.toUpperCase().padEnd(5)}

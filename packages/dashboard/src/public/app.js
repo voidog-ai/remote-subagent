@@ -173,7 +173,7 @@
     const div = document.createElement("div");
     div.className = `log-entry log-${entry.level}`;
     div.innerHTML = `
-      <span class="log-timestamp">${new Date(entry.timestamp).toLocaleTimeString()}</span>
+      <span class="log-timestamp">${formatTs(entry.timestamp)}</span>
       <span class="log-level log-level-${entry.level}">${entry.level.toUpperCase().padEnd(5)}</span>
       <span class="log-source">[${esc(entry.source)}]</span>
       <span class="log-event">${esc(entry.event)}</span>
@@ -233,7 +233,7 @@
     div.className = "activity-item";
     div.innerHTML = `
       <span class="activity-dot ${dotClass}"></span>
-      <span class="activity-time">${new Date(entry.timestamp).toLocaleTimeString()}</span>
+      <span class="activity-time">${formatTs(entry.timestamp)}</span>
       <span class="activity-text">${esc(entry.event)}</span>
     `;
 
@@ -550,6 +550,16 @@
   });
 
   // --- Helpers ---
+  function formatTs(isoString) {
+    return new Date(isoString).toLocaleTimeString("en-GB", { hour12: false });
+  }
+
+  function reformatServerTimestamps() {
+    document.querySelectorAll("[data-ts]").forEach((el) => {
+      el.textContent = formatTs(el.dataset.ts);
+    });
+  }
+
   function getPlatformIcon(platform) {
     switch (platform) {
       case "darwin": return "\uF8FF";
@@ -567,5 +577,6 @@
   }
 
   // --- Initialize ---
+  reformatServerTimestamps();
   connectSocket();
 })();

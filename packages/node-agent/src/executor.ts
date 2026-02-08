@@ -1,5 +1,6 @@
 import {
   createTaskError,
+  ErrorCodes,
   TASK_RESULT_MAX_LENGTH,
   type TaskRequest,
   type TaskResult,
@@ -65,13 +66,20 @@ export class TaskExecutor {
         completedAt: new Date().toISOString(),
       };
     } catch (err: unknown) {
-      const taskError =
-        typeof err === "object" && err !== null && "code" in err
-          ? (err as import("@remote-subagent/shared").TaskError)
-          : createTaskError(
-              "EXECUTION_ERROR",
-              err instanceof Error ? err.message : String(err),
-            );
+      const validCodes: Set<string> = new Set(Object.values(ErrorCodes));
+      const isTaskError =
+        typeof err === "object" &&
+        err !== null &&
+        "code" in err &&
+        typeof (err as Record<string, unknown>).code === "string" &&
+        validCodes.has((err as Record<string, unknown>).code as string);
+
+      const taskError = isTaskError
+        ? (err as import("@remote-subagent/shared").TaskError)
+        : createTaskError(
+            "EXECUTION_ERROR",
+            err instanceof Error ? err.message : String(err),
+          );
 
       return {
         taskId: request.taskId,
