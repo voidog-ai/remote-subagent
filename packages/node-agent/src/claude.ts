@@ -45,8 +45,8 @@ export class ClaudeSession {
       };
 
       // Build claude command args
-      // CLI usage: claude [options] [prompt]
-      // Prompt is passed as a positional argument, not --prompt
+      // Prompt is fed via stdin to avoid shell escaping issues
+      // and CLI hanging when passed as a positional argument
       const args = [
         "--print",
         "--output-format",
@@ -59,9 +59,6 @@ export class ClaudeSession {
         args.push("--max-turns", String(task.maxTurns));
       }
 
-      // Prompt as positional argument (last)
-      args.push(fullPrompt);
-
       const cwd = task.cwd || process.cwd();
 
       const claudeProcess = spawn(this.claudePath, args, {
@@ -73,6 +70,10 @@ export class ClaudeSession {
 
       this.process = claudeProcess;
       this.outputBuffer = "";
+
+      // Feed prompt via stdin
+      claudeProcess.stdin?.write(fullPrompt);
+      claudeProcess.stdin?.end();
 
       claudeProcess.stdout?.on("data", (data: Buffer) => {
         const chunk = data.toString();
