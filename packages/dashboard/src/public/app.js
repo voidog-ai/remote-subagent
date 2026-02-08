@@ -275,8 +275,6 @@
 
     const type = "prompt";
     const payload = { type: "prompt", prompt };
-    const cwd = document.getElementById("input-cwd")?.value?.trim();
-    if (cwd) payload.cwd = cwd;
 
     // Show spinner
     const results = document.getElementById("console-results");

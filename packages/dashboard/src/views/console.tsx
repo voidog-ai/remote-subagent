@@ -43,16 +43,6 @@ export const ConsoleView: FC<ConsoleProps> = ({ nodes, selectedTarget }) => {
               rows={6}
               placeholder="Enter prompt for remote Claude..."
             />
-
-            <div id="cwd-group" class="input-group">
-              <label>Working Directory (optional)</label>
-              <input
-                type="text"
-                id="input-cwd"
-                class="console-input"
-                placeholder="/path/on/target/machine"
-              />
-            </div>
           </div>
 
           {/* Action Buttons */}
