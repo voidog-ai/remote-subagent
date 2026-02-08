@@ -50,6 +50,7 @@ export class ClaudeSession {
       // and CLI hanging when passed as a positional argument
       const args = [
         "--print",
+        "--dangerously-skip-permissions",
         "--output-format",
         "text",
         "--model",
