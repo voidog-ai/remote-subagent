@@ -5,6 +5,7 @@ import { NodesView } from "../views/nodes.js";
 import { LogsView } from "../views/logs.js";
 import { ConsoleView } from "../views/console.js";
 import { SettingsView } from "../views/settings.js";
+import { GraphView } from "../views/graph.js";
 
 interface PageEnv {
   Variables: {
@@ -42,6 +43,23 @@ export function createPageRoutes(
         dashboardSecret={dashboardSecret}
       >
         <DashboardView nodes={nodes} metrics={metrics} />
+      </Layout>
+    );
+    return c.html(html);
+  });
+
+  pages.get("/graph", async (c) => {
+    const nodes = await fetchMaster("/api/nodes");
+
+    const html = (
+      <Layout
+        title="Node Graph"
+        active="/graph"
+        masterUrl={masterUrl}
+        masterPublicUrl={masterPublicUrl}
+        dashboardSecret={dashboardSecret}
+      >
+        <GraphView nodes={nodes} />
       </Layout>
     );
     return c.html(html);

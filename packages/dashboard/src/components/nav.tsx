@@ -7,6 +7,7 @@ interface NavProps {
 export const Nav: FC<NavProps> = ({ active }) => {
   const items = [
     { path: "/", label: "Dashboard", icon: "grid" },
+    { path: "/graph", label: "Graph", icon: "graph" },
     { path: "/nodes", label: "Nodes", icon: "server" },
     { path: "/logs", label: "Logs", icon: "file-text" },
     { path: "/console", label: "Console", icon: "terminal" },
@@ -45,6 +46,7 @@ export const Nav: FC<NavProps> = ({ active }) => {
 function getIcon(name: string): string {
   const icons: Record<string, string> = {
     grid: "\u25A6",
+    graph: "\u25C9",
     server: "\u2630",
     "file-text": "\u2263",
     terminal: ">_",
