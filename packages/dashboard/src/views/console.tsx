@@ -9,52 +9,49 @@ interface ConsoleProps {
 export const ConsoleView: FC<ConsoleProps> = ({ nodes, selectedTarget }) => {
   return (
     <div class="page-chat">
-      {/* Chat header — ノード選択 */}
+      {/* Chat header */}
       <div class="chat-header">
         <div class="chat-header-left">
           <h2 class="chat-title">Console</h2>
           <span class="chat-member-count" id="chat-member-count">
-            {nodes.filter(n => n.status !== "offline").length} online
+            {nodes.filter((n) => n.status !== "offline").length} online
           </span>
-        </div>
-        <div class="chat-header-right">
-          <label class="chat-target-label">Send to</label>
-          <select id="console-target" class="chat-target-select">
-            <option value="all">All Nodes</option>
-            {nodes.map((node) => (
-              <option
-                value={node.nodeId}
-                selected={selectedTarget === node.nodeId}
-                disabled={node.status === "offline"}
-              >
-                {node.status === "offline" ? "\u25CB" : "\u25CF"}{" "}
-                {node.nodeName} ({node.nodeId})
-                {node.status === "offline" ? " [offline]" : ""}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 
       {/* Chat messages area */}
       <div class="chat-messages" id="chat-messages">
-        <div class="chat-empty" id="chat-empty">
-          <div class="chat-empty-icon">💬</div>
-          <p>Send a prompt to start a conversation.</p>
-          <p class="text-muted">Messages and responses will appear here.</p>
-        </div>
+        <div class="chat-loading" id="chat-loading">Loading history...</div>
       </div>
 
-      {/* Chat input bar */}
+      {/* Chat input bar — target selector inline */}
       <div class="chat-input-bar">
+        <select id="console-target" class="chat-target-inline">
+          <option value="all">All Nodes</option>
+          {nodes.map((node) => (
+            <option
+              value={node.nodeId}
+              selected={selectedTarget === node.nodeId}
+              disabled={node.status === "offline"}
+            >
+              {node.status === "offline" ? "\u25CB" : "\u25CF"}{" "}
+              {node.nodeName}
+              {node.status === "offline" ? " [offline]" : ""}
+            </option>
+          ))}
+        </select>
         <textarea
           id="chat-input"
           class="chat-input"
           rows={1}
-          placeholder="Type a message..."
+          placeholder="Type a message... (Shift+Enter to send)"
         />
-        <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">
-          <span class="chat-send-icon">▶</span>
+        <button
+          class="chat-send-btn"
+          id="chat-send-btn"
+          onclick="sendChatMessage()"
+        >
+          <span class="chat-send-icon">{"\u25B6"}</span>
         </button>
       </div>
     </div>

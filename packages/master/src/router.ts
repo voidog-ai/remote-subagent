@@ -23,9 +23,14 @@ interface PendingTask {
   startedAt: number;
 }
 
+export interface TaskHistoryEntry extends TaskResult {
+  prompt?: string;
+  createdAt?: string;
+}
+
 export class MessageRouter {
   private pendingTasks = new Map<string, PendingTask>();
-  private taskHistory: TaskResult[] = [];
+  private taskHistory: TaskHistoryEntry[] = [];
   private dailyTaskCount = new Map<string, number>();
 
   constructor(
@@ -140,11 +145,8 @@ export class MessageRouter {
     clearTimeout(pending.timeoutTimer);
     this.pendingTasks.delete(taskResult.taskId);
 
-    // Add to history
-    this.taskHistory.push(taskResult);
-    if (this.taskHistory.length > TASK_HISTORY_MAX_SIZE) {
-      this.taskHistory.shift();
-    }
+    // Add to history with prompt data from original request
+    this.addToHistory(taskResult, pending.request);
 
     // Update daily count
     const today = new Date().toISOString().slice(0, 10);
@@ -231,10 +233,7 @@ export class MessageRouter {
     };
 
     this.pendingTasks.delete(taskId);
-    this.taskHistory.push(timeoutResult);
-    if (this.taskHistory.length > TASK_HISTORY_MAX_SIZE) {
-      this.taskHistory.shift();
-    }
+    this.addToHistory(timeoutResult, pending.request);
 
     // Route result back
     if (pending.request.sourceNodeId === "dashboard") {
@@ -251,7 +250,19 @@ export class MessageRouter {
     );
   }
 
-  getTaskHistory(nodeId?: string): TaskResult[] {
+  private addToHistory(result: TaskResult, request: TaskRequest): void {
+    const entry: TaskHistoryEntry = {
+      ...result,
+      prompt: request.payload.prompt,
+      createdAt: request.createdAt,
+    };
+    this.taskHistory.push(entry);
+    if (this.taskHistory.length > TASK_HISTORY_MAX_SIZE) {
+      this.taskHistory.shift();
+    }
+  }
+
+  getTaskHistory(nodeId?: string): TaskHistoryEntry[] {
     if (nodeId) {
       return this.taskHistory.filter(
         (t) => t.sourceNodeId === nodeId || t.targetNodeId === nodeId,

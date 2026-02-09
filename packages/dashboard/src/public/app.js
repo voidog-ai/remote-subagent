@@ -248,25 +248,35 @@
   }
 
   // --- Chat Console ---
-  let chatMessages = []; // { id, type, target, targetName, prompt, result, error, durationMs, taskId, timestamp, status }
-  let pendingTaskIds = new Map(); // taskId -> chatMessageId
+  var knownNodeNames = {}; // nodeId -> nodeName cache
+  var pendingTaskIds = new Map(); // taskId -> typingElementId (for locally-initiated tasks)
+  var renderedTaskIds = new Set(); // track which taskIds are already shown
 
   function updateConsoleTargets(nodes) {
-    const select = document.getElementById("console-target");
+    var select = document.getElementById("console-target");
     if (!select) return;
 
-    const currentValue = select.value;
-    const options = ['<option value="all">All Nodes</option>'];
-    nodes.forEach((n) => {
-      const disabled = n.status === "offline" ? "disabled" : "";
-      const icon = n.status === "offline" ? "\u25CB" : "\u25CF";
-      const suffix = n.status === "offline" ? " [offline]" : "";
+    var currentValue = select.value;
+    var options = ['<option value="all">All Nodes</option>'];
+    nodes.forEach(function (n) {
+      // Cache node names for chat display
+      knownNodeNames[n.nodeId] = n.nodeName;
+      var disabled = n.status === "offline" ? "disabled" : "";
+      var icon = n.status === "offline" ? "\u25CB" : "\u25CF";
+      var suffix = n.status === "offline" ? " [offline]" : "";
       options.push(
-        `<option value="${n.nodeId}" ${disabled}>${icon} ${esc(n.nodeName)} (${esc(n.nodeId)})${suffix}</option>`,
+        '<option value="' + esc(n.nodeId) + '" ' + disabled + '>' + icon + ' ' + esc(n.nodeName) + suffix + '</option>',
       );
     });
     select.innerHTML = options.join("");
     if (currentValue) select.value = currentValue;
+
+    // Update member count
+    var countEl = document.getElementById("chat-member-count");
+    if (countEl) {
+      var onlineCount = nodes.filter(function (n) { return n.status !== "offline"; }).length;
+      countEl.textContent = onlineCount + " online";
+    }
   }
 
   function initChat() {
@@ -286,6 +296,180 @@
         window.sendChatMessage();
       }
     });
+
+    // Load chat history from API
+    loadChatHistory();
+  }
+
+  function loadChatHistory() {
+    var container = document.getElementById("chat-messages");
+    var loadingEl = document.getElementById("chat-loading");
+    if (!container) return;
+
+    // Fetch completed task history and active tasks in parallel
+    Promise.all([
+      fetch("/api/tasks").then(function (r) { return r.json(); }),
+      fetch("/api/tasks?active=true").then(function (r) { return r.json(); }),
+    ])
+      .then(function (results) {
+        var history = results[0] || [];
+        var active = results[1] || [];
+
+        // Remove loading indicator
+        if (loadingEl) loadingEl.remove();
+
+        // Render completed tasks from history
+        // history items: { taskId, sourceNodeId, targetNodeId, success, result?, error?, durationMs, completedAt, prompt?, createdAt? }
+        history.forEach(function (entry) {
+          if (renderedTaskIds.has(entry.taskId)) return;
+          renderedTaskIds.add(entry.taskId);
+          renderHistoryEntry(entry);
+        });
+
+        // Render active/running tasks
+        // active items: { taskId, sourceNodeId, targetNodeId, type, payload: { prompt }, createdAt, timeoutMs }
+        active.forEach(function (task) {
+          if (renderedTaskIds.has(task.taskId)) return;
+          renderedTaskIds.add(task.taskId);
+          renderActiveTask(task);
+        });
+
+        scrollChatToBottom();
+      })
+      .catch(function (err) {
+        if (loadingEl) loadingEl.textContent = "Failed to load history";
+        console.error("Failed to load chat history:", err);
+      });
+  }
+
+  function renderHistoryEntry(entry) {
+    var container = document.getElementById("chat-messages");
+    if (!container) return;
+    var isDashboard = entry.sourceNodeId === "dashboard";
+    var timestamp = entry.createdAt || entry.completedAt;
+
+    // Sent bubble (prompt)
+    if (entry.prompt) {
+      var sentDiv = document.createElement("div");
+      sentDiv.className = "chat-msg" + (isDashboard ? " sent" : " system");
+
+      if (isDashboard) {
+        sentDiv.innerHTML =
+          '<div class="chat-avatar user">You</div>' +
+          '<div class="chat-bubble">' +
+            '<div class="chat-bubble-header">' +
+              '<span class="chat-bubble-sender">You</span>' +
+              '<span class="chat-bubble-target">\u2192 ' + esc(resolveNodeName(entry.targetNodeId)) + '</span>' +
+            '</div>' +
+            '<div class="chat-bubble-body">' + esc(entry.prompt) + '</div>' +
+            '<div class="chat-bubble-footer">' +
+              '<span>' + formatChatTime(timestamp) + '</span>' +
+            '</div>' +
+          '</div>';
+      } else {
+        // Agent-to-agent: show as system flow
+        sentDiv.innerHTML =
+          '<div class="chat-avatar node">' + getNodeAvatarLetter(entry.sourceNodeId) + '</div>' +
+          '<div class="chat-bubble flow">' +
+            '<div class="chat-bubble-header">' +
+              '<span class="chat-bubble-sender">' + esc(resolveNodeName(entry.sourceNodeId)) + '</span>' +
+              '<span class="chat-bubble-target">\u2192 ' + esc(resolveNodeName(entry.targetNodeId)) + '</span>' +
+            '</div>' +
+            '<div class="chat-bubble-body">' + esc(entry.prompt) + '</div>' +
+            '<div class="chat-bubble-footer">' +
+              '<span>' + formatChatTime(timestamp) + '</span>' +
+            '</div>' +
+          '</div>';
+      }
+      container.appendChild(sentDiv);
+    }
+
+    // Received bubble (response)
+    var recvDiv = document.createElement("div");
+    recvDiv.className = "chat-msg received";
+    var isError = !entry.success;
+    var nodeName = resolveNodeName(entry.targetNodeId);
+    var body = isError
+      ? esc((entry.error?.code || "ERROR") + ": " + (entry.error?.message || "Unknown error"))
+      : esc(entry.result || "(no output)");
+
+    recvDiv.innerHTML =
+      '<div class="chat-avatar node">' + getNodeAvatarLetter(entry.targetNodeId) + '</div>' +
+      '<div class="chat-bubble' + (isError ? ' error' : '') + '">' +
+        '<button class="chat-copy-btn" onclick="copyChatBubble(this)">Copy</button>' +
+        '<div class="chat-bubble-header">' +
+          '<span class="chat-bubble-sender">' + esc(nodeName) + '</span>' +
+          '<span class="chat-bubble-status ' + (isError ? 'failed' : 'success') + '">' + (isError ? 'failed' : 'success') + '</span>' +
+        '</div>' +
+        '<div class="chat-bubble-body mono' + (isError ? ' error-text' : '') + '">' + body + '</div>' +
+        '<div class="chat-bubble-footer">' +
+          '<span>' + formatChatTime(entry.completedAt) + '</span>' +
+          (entry.durationMs ? '<span class="chat-bubble-duration">' + formatChatDuration(entry.durationMs) + '</span>' : '') +
+        '</div>' +
+      '</div>';
+    container.appendChild(recvDiv);
+  }
+
+  function renderActiveTask(task) {
+    var container = document.getElementById("chat-messages");
+    if (!container) return;
+    var isDashboard = task.sourceNodeId === "dashboard";
+    var prompt = task.payload?.prompt || "";
+
+    // Sent bubble
+    if (prompt) {
+      var sentDiv = document.createElement("div");
+      sentDiv.className = "chat-msg" + (isDashboard ? " sent" : " system");
+
+      if (isDashboard) {
+        sentDiv.innerHTML =
+          '<div class="chat-avatar user">You</div>' +
+          '<div class="chat-bubble">' +
+            '<div class="chat-bubble-header">' +
+              '<span class="chat-bubble-sender">You</span>' +
+              '<span class="chat-bubble-target">\u2192 ' + esc(resolveNodeName(task.targetNodeId)) + '</span>' +
+            '</div>' +
+            '<div class="chat-bubble-body">' + esc(prompt) + '</div>' +
+            '<div class="chat-bubble-footer">' +
+              '<span>' + formatChatTime(task.createdAt) + '</span>' +
+            '</div>' +
+          '</div>';
+      } else {
+        sentDiv.innerHTML =
+          '<div class="chat-avatar node">' + getNodeAvatarLetter(task.sourceNodeId) + '</div>' +
+          '<div class="chat-bubble flow">' +
+            '<div class="chat-bubble-header">' +
+              '<span class="chat-bubble-sender">' + esc(resolveNodeName(task.sourceNodeId)) + '</span>' +
+              '<span class="chat-bubble-target">\u2192 ' + esc(resolveNodeName(task.targetNodeId)) + '</span>' +
+            '</div>' +
+            '<div class="chat-bubble-body">' + esc(prompt) + '</div>' +
+            '<div class="chat-bubble-footer">' +
+              '<span>' + formatChatTime(task.createdAt) + '</span>' +
+            '</div>' +
+          '</div>';
+      }
+      container.appendChild(sentDiv);
+    }
+
+    // Typing indicator bubble
+    var typingDiv = document.createElement("div");
+    typingDiv.className = "chat-msg received";
+    typingDiv.id = "typing-" + task.taskId;
+    var nodeName = resolveNodeName(task.targetNodeId);
+    typingDiv.innerHTML =
+      '<div class="chat-avatar node">' + getNodeAvatarLetter(task.targetNodeId) + '</div>' +
+      '<div class="chat-bubble">' +
+        '<div class="chat-bubble-header">' +
+          '<span class="chat-bubble-sender">' + esc(nodeName) + '</span>' +
+          '<span class="chat-bubble-status running">running</span>' +
+        '</div>' +
+        '<div class="chat-typing-dots"><span></span><span></span><span></span></div>' +
+        '<div class="chat-streaming-text" id="stream-' + task.taskId + '"></div>' +
+      '</div>';
+    container.appendChild(typingDiv);
+
+    // Track this as pending so handleTaskResult picks it up
+    pendingTaskIds.set(task.taskId, "typing-" + task.taskId);
   }
 
   window.sendChatMessage = function () {
@@ -297,29 +481,31 @@
     if (!prompt) return;
 
     // Get target name for display
-    var selectEl = document.getElementById("console-target");
-    var targetName = target === "all" ? "All Nodes" : (selectEl?.selectedOptions[0]?.textContent?.trim() || target);
+    var targetName = resolveNodeName(target === "all" ? "all" : target);
+    if (target === "all") targetName = "All Nodes";
 
     // Clear input
     chatInput.value = "";
     chatInput.style.height = "auto";
 
-    // Remove empty state
-    var emptyEl = document.getElementById("chat-empty");
-    if (emptyEl) emptyEl.remove();
-
     // Add sent message
-    var msgId = "msg-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
-    var sentMsg = {
-      id: msgId,
-      type: "sent",
-      target: target,
-      targetName: targetName,
-      prompt: prompt,
-      timestamp: new Date().toISOString(),
-    };
-    chatMessages.push(sentMsg);
-    appendChatBubble(sentMsg);
+    var sentDiv = document.createElement("div");
+    sentDiv.className = "chat-msg sent";
+    sentDiv.innerHTML =
+      '<div class="chat-avatar user">You</div>' +
+      '<div class="chat-bubble">' +
+        '<div class="chat-bubble-header">' +
+          '<span class="chat-bubble-sender">You</span>' +
+          '<span class="chat-bubble-target">\u2192 ' + esc(targetName) + '</span>' +
+        '</div>' +
+        '<div class="chat-bubble-body">' + esc(prompt) + '</div>' +
+        '<div class="chat-bubble-footer">' +
+          '<span>' + formatChatTime(new Date().toISOString()) + '</span>' +
+        '</div>' +
+      '</div>';
+    var container = document.getElementById("chat-messages");
+    if (container) container.appendChild(sentDiv);
+    scrollChatToBottom();
 
     // Disable send button
     var sendBtn = document.getElementById("chat-send-btn");
@@ -339,125 +525,103 @@
       .then(function (data) {
         var taskIds = data.taskIds || (data.taskId ? [data.taskId] : []);
         taskIds.forEach(function (taskId) {
+          renderedTaskIds.add(taskId);
           // Add typing indicator for each task
-          var typingId = "typing-" + taskId;
-          var targetNodeId = data.targetNodeId || target;
-          var typingMsg = {
-            id: typingId,
-            type: "typing",
-            taskId: taskId,
-            targetNodeId: targetNodeId,
-            targetName: targetName,
-            output: "",
-            timestamp: new Date().toISOString(),
-          };
-          chatMessages.push(typingMsg);
-          appendChatBubble(typingMsg);
-          pendingTaskIds.set(taskId, typingId);
+          var typingDiv = document.createElement("div");
+          typingDiv.className = "chat-msg received";
+          typingDiv.id = "typing-" + taskId;
+          var tNodeId = data.targetNodeId || target;
+          var tName = resolveNodeName(tNodeId);
+          typingDiv.innerHTML =
+            '<div class="chat-avatar node">' + getNodeAvatarLetter(tNodeId) + '</div>' +
+            '<div class="chat-bubble">' +
+              '<div class="chat-bubble-header">' +
+                '<span class="chat-bubble-sender">' + esc(tName) + '</span>' +
+                '<span class="chat-bubble-status running">running</span>' +
+              '</div>' +
+              '<div class="chat-typing-dots"><span></span><span></span><span></span></div>' +
+              '<div class="chat-streaming-text" id="stream-' + taskId + '"></div>' +
+            '</div>';
+          if (container) container.appendChild(typingDiv);
+          pendingTaskIds.set(taskId, "typing-" + taskId);
         });
         scrollChatToBottom();
       })
       .catch(function (err) {
-        // Show error as a received message
-        var errMsg = {
-          id: "err-" + Date.now(),
-          type: "received",
-          targetName: "System",
-          result: null,
-          error: { message: err.message },
-          timestamp: new Date().toISOString(),
-          status: "error",
-        };
-        chatMessages.push(errMsg);
-        appendChatBubble(errMsg);
+        // Show error as system message
+        var errDiv = document.createElement("div");
+        errDiv.className = "chat-msg received";
+        errDiv.innerHTML =
+          '<div class="chat-avatar node">!</div>' +
+          '<div class="chat-bubble error">' +
+            '<div class="chat-bubble-header">' +
+              '<span class="chat-bubble-sender">System</span>' +
+              '<span class="chat-bubble-status failed">error</span>' +
+            '</div>' +
+            '<div class="chat-bubble-body mono error-text">' + esc(err.message) + '</div>' +
+          '</div>';
+        if (container) container.appendChild(errDiv);
         if (sendBtn) sendBtn.disabled = false;
       });
   };
 
-  function appendChatBubble(msg) {
-    var container = document.getElementById("chat-messages");
-    if (!container) return;
-
-    var div = document.createElement("div");
-    div.id = msg.id;
-
-    if (msg.type === "sent") {
-      div.className = "chat-msg sent";
-      div.innerHTML =
-        '<div class="chat-avatar user">You</div>' +
-        '<div class="chat-bubble">' +
-          '<div class="chat-bubble-header">' +
-            '<span class="chat-bubble-sender">You</span>' +
-            '<span class="chat-bubble-target">\u2192 ' + esc(msg.targetName) + '</span>' +
-          '</div>' +
-          '<div class="chat-bubble-body">' + esc(msg.prompt) + '</div>' +
-          '<div class="chat-bubble-footer">' +
-            '<span>' + formatChatTime(msg.timestamp) + '</span>' +
-          '</div>' +
-        '</div>';
-    } else if (msg.type === "typing") {
-      div.className = "chat-msg received";
-      var nodeName = getNodeDisplayName(msg.targetNodeId) || msg.targetName;
-      div.innerHTML =
-        '<div class="chat-avatar node">' + getNodeAvatarLetter(msg.targetNodeId) + '</div>' +
-        '<div class="chat-bubble">' +
-          '<div class="chat-bubble-header">' +
-            '<span class="chat-bubble-sender">' + esc(nodeName) + '</span>' +
-          '</div>' +
-          '<div class="chat-typing-dots"><span></span><span></span><span></span></div>' +
-          '<div class="chat-streaming-text" id="stream-' + msg.taskId + '"></div>' +
-        '</div>';
-    } else if (msg.type === "received") {
-      div.className = "chat-msg received";
-      var isError = msg.status === "error";
-      var nodeName = getNodeDisplayName(msg.targetNodeId) || msg.targetName || "Node";
-      var body = isError
-        ? esc((msg.error?.code || "ERROR") + ": " + (msg.error?.message || "Unknown error"))
-        : esc(msg.result || "");
-      div.innerHTML =
-        '<div class="chat-avatar node">' + getNodeAvatarLetter(msg.targetNodeId) + '</div>' +
-        '<div class="chat-bubble' + (isError ? ' error' : '') + '">' +
-          '<button class="chat-copy-btn" onclick="copyChatBubble(this)">Copy</button>' +
-          '<div class="chat-bubble-header">' +
-            '<span class="chat-bubble-sender">' + esc(nodeName) + '</span>' +
-            '<span class="chat-bubble-status ' + (isError ? 'failed' : 'success') + '">' + (isError ? 'failed' : 'success') + '</span>' +
-          '</div>' +
-          '<div class="chat-bubble-body mono' + (isError ? ' error-text' : '') + '">' + body + '</div>' +
-          '<div class="chat-bubble-footer">' +
-            '<span>' + formatChatTime(msg.timestamp) + '</span>' +
-            (msg.durationMs ? '<span class="chat-bubble-duration">' + formatChatDuration(msg.durationMs) + '</span>' : '') +
-          '</div>' +
-        '</div>';
-    }
-
-    container.appendChild(div);
-    scrollChatToBottom();
-  }
-
   function handleTaskResult(result) {
     var typingId = pendingTaskIds.get(result.taskId);
-    if (!typingId) return;
-    pendingTaskIds.delete(result.taskId);
 
-    // Remove typing bubble
-    var typingEl = document.getElementById(typingId);
-    if (typingEl) typingEl.remove();
+    if (typingId) {
+      // This was a tracked task — remove typing bubble
+      pendingTaskIds.delete(result.taskId);
+      var typingEl = document.getElementById(typingId);
+      if (typingEl) typingEl.remove();
+    } else if (!renderedTaskIds.has(result.taskId)) {
+      // Untracked task (e.g. agent-to-agent initiated while console was open)
+      // Show it as a new system-style entry
+      renderedTaskIds.add(result.taskId);
+      renderHistoryEntry({
+        taskId: result.taskId,
+        sourceNodeId: result.sourceNodeId,
+        targetNodeId: result.targetNodeId,
+        success: result.success,
+        result: result.result,
+        error: result.error,
+        durationMs: result.durationMs,
+        completedAt: result.completedAt || new Date().toISOString(),
+        prompt: result.prompt || null,
+        createdAt: result.createdAt || null,
+      });
+      scrollChatToBottom();
+      return;
+    }
+
+    renderedTaskIds.add(result.taskId);
 
     // Add response bubble
-    var recvMsg = {
-      id: "recv-" + result.taskId,
-      type: "received",
-      taskId: result.taskId,
-      targetNodeId: result.targetNodeId,
-      targetName: result.targetNodeId,
-      result: result.success ? (result.result || "") : null,
-      error: result.success ? null : result.error,
-      durationMs: result.durationMs,
-      timestamp: new Date().toISOString(),
-      status: result.success ? "success" : "error",
-    };
-    chatMessages.push(recvMsg);
-    appendChatBubble(recvMsg);
+    var container = document.getElementById("chat-messages");
+    if (!container) return;
+    var isError = !result.success;
+    var nodeName = resolveNodeName(result.targetNodeId);
+    var body = isError
+      ? esc((result.error?.code || "ERROR") + ": " + (result.error?.message || "Unknown error"))
+      : esc(result.result || "(no output)");
+
+    var recvDiv = document.createElement("div");
+    recvDiv.className = "chat-msg received";
+    recvDiv.innerHTML =
+      '<div class="chat-avatar node">' + getNodeAvatarLetter(result.targetNodeId) + '</div>' +
+      '<div class="chat-bubble' + (isError ? ' error' : '') + '">' +
+        '<button class="chat-copy-btn" onclick="copyChatBubble(this)">Copy</button>' +
+        '<div class="chat-bubble-header">' +
+          '<span class="chat-bubble-sender">' + esc(nodeName) + '</span>' +
+          '<span class="chat-bubble-status ' + (isError ? 'failed' : 'success') + '">' + (isError ? 'failed' : 'success') + '</span>' +
+        '</div>' +
+        '<div class="chat-bubble-body mono' + (isError ? ' error-text' : '') + '">' + body + '</div>' +
+        '<div class="chat-bubble-footer">' +
+          '<span>' + formatChatTime(result.completedAt || new Date().toISOString()) + '</span>' +
+          (result.durationMs ? '<span class="chat-bubble-duration">' + formatChatDuration(result.durationMs) + '</span>' : '') +
+        '</div>' +
+      '</div>';
+    container.appendChild(recvDiv);
+    scrollChatToBottom();
 
     // Re-enable send button if no more pending
     if (pendingTaskIds.size === 0) {
@@ -489,6 +653,7 @@
   }
 
   function formatChatTime(isoString) {
+    if (!isoString) return "";
     return new Date(isoString).toLocaleTimeString("en-GB", { hour12: false, hour: "2-digit", minute: "2-digit" });
   }
 
@@ -498,23 +663,27 @@
     return s + "s";
   }
 
-  function getNodeDisplayName(nodeId) {
+  function resolveNodeName(nodeId) {
+    if (!nodeId) return "Unknown";
+    if (nodeId === "dashboard") return "Dashboard";
+    if (knownNodeNames[nodeId]) return knownNodeNames[nodeId];
     // Try to find from the select options
     var select = document.getElementById("console-target");
-    if (!select) return nodeId;
-    for (var i = 0; i < select.options.length; i++) {
-      if (select.options[i].value === nodeId) {
-        // Extract name part before the (nodeId) parenthetical
-        var text = select.options[i].textContent.trim();
-        var match = text.match(/^[●○]\s*(.+?)\s*\(/);
-        return match ? match[1] : text;
+    if (select) {
+      for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === nodeId) {
+          var text = select.options[i].textContent.trim();
+          // Remove status icon prefix (● or ○) and [offline] suffix
+          var clean = text.replace(/^[●○]\s*/, "").replace(/\s*\[offline\]$/, "");
+          return clean || nodeId;
+        }
       }
     }
     return nodeId;
   }
 
   function getNodeAvatarLetter(nodeId) {
-    var name = getNodeDisplayName(nodeId);
+    var name = resolveNodeName(nodeId);
     if (!name) return "?";
     return esc(name.charAt(0).toUpperCase());
   }

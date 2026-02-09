@@ -1117,6 +1117,67 @@ html, body {
   transform: translateX(1px);
 }
 
+/* Inline target selector in input bar */
+.chat-target-inline {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text-primary);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: var(--font-ui);
+  flex-shrink: 0;
+  max-width: 160px;
+  cursor: pointer;
+}
+
+.chat-target-inline:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+/* Loading indicator */
+.chat-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* System message (agent-to-agent tasks) */
+.chat-msg.system {
+  align-self: center;
+  max-width: 85%;
+}
+
+.chat-msg.system .chat-bubble {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.chat-msg.system .chat-bubble-header {
+  gap: 6px;
+}
+
+.chat-msg.system .chat-bubble-sender {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.chat-bubble.flow {
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.chat-bubble-status.running {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--status-running, #d29922);
+}
+
 /* ---- Console ---- */
 .console-layout {
   display: grid;
