@@ -6,7 +6,7 @@ Interconnect Claude Code instances across multiple PCs (MacBook Pro, Surface Pro
 
 ```
               [Web Dashboard (Hono + JSX)]
-              port 3200 / Basic Auth
+              port 3200
                        |
               [Ubuntu Server - Master]
               port 3100 / Socket.IO + REST API
@@ -35,7 +35,7 @@ Interconnect Claude Code instances across multiple PCs (MacBook Pro, Surface Pro
 ### 1. Install & Build
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/voidog-ai/remote-subagent.git
 cd remote-subagent
 npm install
 npm run build
@@ -62,7 +62,7 @@ DASHBOARD_USER=admin
 DASHBOARD_PASSWORD=your-password
 MASTER_URL=http://your-server:3100
 
-# Session persistence (default: true)
+# Session persistence (default: true when omitted)
 SESSION_PERSISTENCE=true
 
 # Node agent (each client PC)
@@ -70,6 +70,7 @@ NODE_ID=macbook-pro
 NODE_NAME=MacBook Pro
 MASTER_URL=http://your-server:3100
 NODE_TOKEN=<generated-jwt-token>
+CLAUDE_SKIP_PERMISSIONS=false
 
 # MCP server (each client PC)
 MCP_NODE_ID=macbook-pro
@@ -255,7 +256,7 @@ remote.example.com {
 
 ## Dashboard
 
-Access at `http://your-server:3200` (Basic Auth protected).
+Access at `http://your-server:3200`. Requires `DASHBOARD_USER` and `DASHBOARD_PASSWORD` environment variables for Basic Auth.
 
 | Page | Path | Description |
 |---|---|---|
@@ -365,6 +366,29 @@ TLS_KEY_PATH=/path/to/key.pem
 ```
 
 When unset, the server starts in plain HTTP mode.
+
+## Security
+
+### Required Secrets
+
+The master server requires `JWT_SECRET` and `DASHBOARD_SECRET` environment variables. It will refuse to start if either is missing. Generate strong random values:
+
+```bash
+openssl rand -base64 32  # for JWT_SECRET
+openssl rand -base64 32  # for DASHBOARD_SECRET
+```
+
+### Claude Code Permissions
+
+By default, remote Claude Code instances run **with** the standard permission system. Set `CLAUDE_SKIP_PERMISSIONS=true` in the node agent's environment only if you understand the implications — this grants the remote Claude instance unrestricted file and command access on that machine.
+
+### Dashboard Access
+
+The dashboard exposes task execution and file operations. In production, place it behind a reverse proxy with proper authentication (e.g., Cloudflare Access, OAuth2 Proxy) in addition to the built-in Basic Auth.
+
+### Node Agent Restrictions
+
+Use `ALLOWED_PATHS` and `DENIED_COMMANDS` environment variables on each node agent to limit file access and block dangerous commands. See [Node Agent Configuration](#node-agent-configuration) for details.
 
 ## Development
 

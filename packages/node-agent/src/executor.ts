@@ -21,6 +21,7 @@ export class TaskExecutor {
     this.claude = new ClaudeSession(
       config.claudeModel,
       config.claudePath,
+      config.skipPermissions,
       config.sessionPersistence,
     );
   }

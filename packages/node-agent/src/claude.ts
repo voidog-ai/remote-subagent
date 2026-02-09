@@ -16,12 +16,14 @@ export class ClaudeSession {
   private currentExecution: TaskExecution | null = null;
   private model: string;
   private claudePath: string;
+  private skipPermissions: boolean;
   private sessionPersistence: boolean;
   private outputBuffer = "";
 
-  constructor(model: string, claudePath = "claude", sessionPersistence = true) {
+  constructor(model: string, claudePath = "claude", skipPermissions = false, sessionPersistence = true) {
     this.model = model;
     this.claudePath = claudePath;
+    this.skipPermissions = skipPermissions;
     this.sessionPersistence = sessionPersistence;
   }
 
@@ -69,7 +71,7 @@ export class ClaudeSession {
       // and CLI hanging when passed as a positional argument
       const args = [
         "--print",
-        "--dangerously-skip-permissions",
+        ...(this.skipPermissions ? ["--dangerously-skip-permissions"] : []),
         "--output-format",
         "text",
         "--model",

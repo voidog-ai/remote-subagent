@@ -2,6 +2,27 @@
   "name": "remote-subagent",
   "version": "1.0.0",
   "private": true,
+  "license": "MIT",
+  "description": "Interconnect Claude Code instances across multiple machines with a master hub, real-time dashboard, and MCP integration",
+  "author": "Voidog AI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/voidog-ai/remote-subagent.git"
+  },
+  "homepage": "https://github.com/voidog-ai/remote-subagent",
+  "bugs": {
+    "url": "https://github.com/voidog-ai/remote-subagent/issues"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "mcp",
+    "remote",
+    "subagent",
+    "distributed",
+    "ai",
+    "agent"
+  ],
   "type": "module",
   "workspaces": [
     "packages/shared",

@@ -1,6 +1,7 @@
 {
   "name": "@remote-subagent/master",
   "version": "1.0.0",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "scripts": {

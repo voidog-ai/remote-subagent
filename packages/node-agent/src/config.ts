@@ -6,6 +6,7 @@ export interface AgentConfig {
   claudeModel: string;
   // Claude
   claudePath: string;
+  skipPermissions: boolean;
   // Task
   maxQueueSize: number;
   maxTaskTimeoutMs: number;
@@ -22,6 +23,7 @@ export function loadConfig(): AgentConfig {
     claudeModel:
       process.env.CLAUDE_MODEL || "claude-sonnet-4-5-20250929",
     claudePath: process.env.CLAUDE_PATH || "claude",
+    skipPermissions: process.env.CLAUDE_SKIP_PERMISSIONS === "true",
     maxQueueSize: parseInt(process.env.MAX_QUEUE_SIZE || "10", 10),
     maxTaskTimeoutMs: parseInt(
       process.env.MAX_TASK_TIMEOUT_MS || "300000",

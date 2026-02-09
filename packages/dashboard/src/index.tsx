@@ -10,8 +10,11 @@ import { createApiRoutes } from "./routes/api.js";
 const port = parseInt(process.env.DASHBOARD_PORT || "3200", 10);
 const masterUrl = process.env.MASTER_URL || "http://localhost:3100";
 const masterPublicUrl = process.env.MASTER_PUBLIC_URL ?? masterUrl;
-const dashboardSecret =
-  process.env.DASHBOARD_SECRET || "dev-dashboard-secret";
+if (!process.env.DASHBOARD_SECRET) {
+  console.error("DASHBOARD_SECRET is required. Set it in your .env file.");
+  process.exit(1);
+}
+const dashboardSecret = process.env.DASHBOARD_SECRET;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // In dist, public files are at ../src/public; in dev, at ./public
