@@ -4,13 +4,10 @@ import path from "node:path";
 import { readFileSync } from "node:fs";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { basicAuth } from "./middleware/auth.js";
 import { createPageRoutes } from "./routes/pages.js";
 import { createApiRoutes } from "./routes/api.js";
 
 const port = parseInt(process.env.DASHBOARD_PORT || "3200", 10);
-const username = process.env.DASHBOARD_USER || "admin";
-const password = process.env.DASHBOARD_PASSWORD || "changeme";
 const masterUrl = process.env.MASTER_URL || "http://localhost:3100";
 const masterPublicUrl = process.env.MASTER_PUBLIC_URL ?? masterUrl;
 const dashboardSecret =
@@ -40,9 +37,6 @@ app.get("/public/:file", async (c) => {
     return c.text("Not found", 404);
   }
 });
-
-// Basic Auth for all other routes
-app.use("*", basicAuth(username, password));
 
 // API routes (proxied to master)
 app.route("/api", createApiRoutes(masterUrl, dashboardSecret));

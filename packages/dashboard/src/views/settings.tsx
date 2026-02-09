@@ -92,21 +92,6 @@ export const SettingsView: FC<SettingsProps> = ({
         </div>
       </div>
 
-      {/* Auth Settings */}
-      <div class="settings-section">
-        <h3>Dashboard Authentication</h3>
-        <div class="settings-card">
-          <div class="settings-row">
-            <span class="settings-label">Method</span>
-            <span class="settings-value">Basic Auth</span>
-          </div>
-          <p class="text-muted">
-            Password changes require updating the DASHBOARD_PASSWORD environment
-            variable and restarting the dashboard process.
-          </p>
-        </div>
-      </div>
-
       {/* System Constants */}
       <div class="settings-section">
         <h3>System Configuration</h3>

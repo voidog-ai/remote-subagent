@@ -106,7 +106,7 @@ export function createPageRoutes(
 
     const html = (
       <Layout
-        title="Console"
+        title="AI Chat"
         active="/console"
         masterUrl={masterUrl}
         masterPublicUrl={masterPublicUrl}

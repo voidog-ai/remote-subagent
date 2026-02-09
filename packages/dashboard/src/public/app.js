@@ -22,6 +22,11 @@
       return;
     }
 
+    if (typeof io === "undefined") {
+      console.warn("Socket.IO not loaded, real-time updates disabled");
+      return;
+    }
+
     socket = io(masterUrl + "/dashboard", {
       auth: { secret: dashboardSecret },
       transports: ["websocket", "polling"],
@@ -247,6 +252,19 @@
     }
   }
 
+  // --- Markdown rendering ---
+  function renderMarkdown(text) {
+    if (!text) return esc(text);
+    if (typeof marked !== "undefined" && marked.parse) {
+      try {
+        return marked.parse(text, { breaks: true });
+      } catch (e) {
+        return esc(text);
+      }
+    }
+    return esc(text);
+  }
+
   // --- Chat Console ---
   var knownNodeNames = {}; // nodeId -> nodeName cache
   var pendingTaskIds = new Map(); // taskId -> typingElementId (for locally-initiated tasks)
@@ -391,7 +409,7 @@
     var nodeName = resolveNodeName(entry.targetNodeId);
     var body = isError
       ? esc((entry.error?.code || "ERROR") + ": " + (entry.error?.message || "Unknown error"))
-      : esc(entry.result || "(no output)");
+      : renderMarkdown(entry.result || "(no output)");
 
     recvDiv.innerHTML =
       '<div class="chat-avatar node">' + getNodeAvatarLetter(entry.targetNodeId) + '</div>' +
@@ -401,7 +419,7 @@
           '<span class="chat-bubble-sender">' + esc(nodeName) + '</span>' +
           '<span class="chat-bubble-status ' + (isError ? 'failed' : 'success') + '">' + (isError ? 'failed' : 'success') + '</span>' +
         '</div>' +
-        '<div class="chat-bubble-body mono' + (isError ? ' error-text' : '') + '">' + body + '</div>' +
+        '<div class="chat-bubble-body markdown' + (isError ? ' error-text' : '') + '">' + body + '</div>' +
         '<div class="chat-bubble-footer">' +
           '<span>' + formatChatTime(entry.completedAt) + '</span>' +
           (entry.durationMs ? '<span class="chat-bubble-duration">' + formatChatDuration(entry.durationMs) + '</span>' : '') +
@@ -607,7 +625,7 @@
     var nodeName = resolveNodeName(result.targetNodeId);
     var body = isError
       ? esc((result.error?.code || "ERROR") + ": " + (result.error?.message || "Unknown error"))
-      : esc(result.result || "(no output)");
+      : renderMarkdown(result.result || "(no output)");
 
     var recvDiv = document.createElement("div");
     recvDiv.className = "chat-msg received";
@@ -619,7 +637,7 @@
           '<span class="chat-bubble-sender">' + esc(nodeName) + '</span>' +
           '<span class="chat-bubble-status ' + (isError ? 'failed' : 'success') + '">' + (isError ? 'failed' : 'success') + '</span>' +
         '</div>' +
-        '<div class="chat-bubble-body mono' + (isError ? ' error-text' : '') + '">' + body + '</div>' +
+        '<div class="chat-bubble-body markdown' + (isError ? ' error-text' : '') + '">' + body + '</div>' +
         '<div class="chat-bubble-footer">' +
           '<span>' + formatChatTime(result.completedAt || new Date().toISOString()) + '</span>' +
           (result.durationMs ? '<span class="chat-bubble-duration">' + formatChatDuration(result.durationMs) + '</span>' : '') +

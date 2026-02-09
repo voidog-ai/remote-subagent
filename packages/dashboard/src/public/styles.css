@@ -810,7 +810,7 @@ html, body {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 24px;
 }
 
 .chat-empty {
@@ -940,6 +940,110 @@ html, body {
 .chat-bubble-body.mono {
   font-family: var(--font-mono);
   font-size: 12px;
+}
+
+.chat-bubble-body.markdown {
+  white-space: normal;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.chat-bubble-body.markdown > *:first-child { margin-top: 0; }
+.chat-bubble-body.markdown > *:last-child { margin-bottom: 0; }
+
+.chat-bubble-body.markdown h1,
+.chat-bubble-body.markdown h2,
+.chat-bubble-body.markdown h3,
+.chat-bubble-body.markdown h4 {
+  margin: 12px 0 6px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.chat-bubble-body.markdown h1 { font-size: 18px; }
+.chat-bubble-body.markdown h2 { font-size: 16px; }
+.chat-bubble-body.markdown h3 { font-size: 14px; }
+
+.chat-bubble-body.markdown p {
+  margin: 6px 0;
+}
+
+.chat-bubble-body.markdown a {
+  color: #60a5fa;
+  text-decoration: underline;
+}
+
+.chat-bubble-body.markdown strong { font-weight: 600; }
+
+.chat-bubble-body.markdown ul,
+.chat-bubble-body.markdown ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.chat-bubble-body.markdown li {
+  margin: 2px 0;
+}
+
+.chat-bubble-body.markdown blockquote {
+  margin: 6px 0;
+  padding: 4px 12px;
+  border-left: 3px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.chat-bubble-body.markdown code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.chat-bubble-body.markdown pre {
+  margin: 8px 0;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.chat-bubble-body.markdown pre code {
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.chat-bubble-body.markdown table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+  font-size: 12px;
+}
+
+.chat-bubble-body.markdown th,
+.chat-bubble-body.markdown td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.chat-bubble-body.markdown th {
+  background: rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+}
+
+.chat-bubble-body.markdown hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
+}
+
+.chat-bubble-body.markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 6px 0;
 }
 
 .chat-bubble-body.error-text {

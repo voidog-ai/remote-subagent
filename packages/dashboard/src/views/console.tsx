@@ -12,7 +12,7 @@ export const ConsoleView: FC<ConsoleProps> = ({ nodes, selectedTarget }) => {
       {/* Chat header */}
       <div class="chat-header">
         <div class="chat-header-left">
-          <h2 class="chat-title">Console</h2>
+          <h2 class="chat-title">AI Chat</h2>
           <span class="chat-member-count" id="chat-member-count">
             {nodes.filter((n) => n.status !== "offline").length} online
           </span>

@@ -18,13 +18,14 @@ export const Layout: FC<LayoutProps> = ({
   dashboardSecret,
   children,
 }) => {
+  const cacheBust = `v=${Date.now()}`;
   return (
     <html lang="en">
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{title} - RemoteSubagent</title>
-        <link rel="stylesheet" href="/public/styles.css" />
+        <link rel="stylesheet" href={`/public/styles.css?${cacheBust}`} />
       </head>
       <body>
         <div class="app-layout">
@@ -45,7 +46,8 @@ export const Layout: FC<LayoutProps> = ({
             `,
           }}
         />
-        <script src="/public/app.js" />
+        <script src={`/public/marked.min.js?${cacheBust}`} />
+        <script src={`/public/app.js?${cacheBust}`} />
       </body>
     </html>
   );
