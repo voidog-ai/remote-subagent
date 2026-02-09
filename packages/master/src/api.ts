@@ -144,7 +144,7 @@ export class RestApi {
       // Fan-out to all online nodes
       const onlineNodes = this.registry.getOnlineAgentNodes();
       const broadcastId = randomUUID();
-      const taskIds: string[] = [];
+      const tasks: { taskId: string; targetNodeId: string }[] = [];
 
       for (const node of onlineNodes) {
         const request = this.router.createTaskRequest(
@@ -155,12 +155,12 @@ export class RestApi {
           timeout,
           context,
         );
-        taskIds.push(request.taskId);
+        tasks.push({ taskId: request.taskId, targetNodeId: node.nodeId });
         this.router.routeTaskFromApi(request);
       }
 
       res.writeHead(202, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ taskIds, broadcastId }));
+      res.end(JSON.stringify({ taskIds: tasks.map((t) => t.taskId), tasks, broadcastId }));
     } else {
       const request = this.router.createTaskRequest(
         "dashboard",
@@ -174,7 +174,7 @@ export class RestApi {
       this.router.routeTaskFromApi(request);
 
       res.writeHead(202, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ taskId: request.taskId }));
+      res.end(JSON.stringify({ taskId: request.taskId, targetNodeId }));
     }
   }
 

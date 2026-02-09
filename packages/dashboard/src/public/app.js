@@ -523,15 +523,20 @@
     })
       .then(function (res) { return res.json(); })
       .then(function (data) {
+        // Build taskId -> targetNodeId mapping from response
+        var taskNodeMap = {};
+        if (data.tasks) {
+          data.tasks.forEach(function (t) { taskNodeMap[t.taskId] = t.targetNodeId; });
+        }
         var taskIds = data.taskIds || (data.taskId ? [data.taskId] : []);
         taskIds.forEach(function (taskId) {
           renderedTaskIds.add(taskId);
+          var tNodeId = taskNodeMap[taskId] || data.targetNodeId || target;
+          var tName = resolveNodeName(tNodeId);
           // Add typing indicator for each task
           var typingDiv = document.createElement("div");
           typingDiv.className = "chat-msg received";
           typingDiv.id = "typing-" + taskId;
-          var tNodeId = data.targetNodeId || target;
-          var tName = resolveNodeName(tNodeId);
           typingDiv.innerHTML =
             '<div class="chat-avatar node">' + getNodeAvatarLetter(tNodeId) + '</div>' +
             '<div class="chat-bubble">' +
