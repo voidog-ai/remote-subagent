@@ -8,71 +8,54 @@ interface ConsoleProps {
 
 export const ConsoleView: FC<ConsoleProps> = ({ nodes, selectedTarget }) => {
   return (
-    <div class="page-console">
-      <div class="page-header">
-        <h2>Command Console</h2>
+    <div class="page-chat">
+      {/* Chat header — ノード選択 */}
+      <div class="chat-header">
+        <div class="chat-header-left">
+          <h2 class="chat-title">Console</h2>
+          <span class="chat-member-count" id="chat-member-count">
+            {nodes.filter(n => n.status !== "offline").length} online
+          </span>
+        </div>
+        <div class="chat-header-right">
+          <label class="chat-target-label">Send to</label>
+          <select id="console-target" class="chat-target-select">
+            <option value="all">All Nodes</option>
+            {nodes.map((node) => (
+              <option
+                value={node.nodeId}
+                selected={selectedTarget === node.nodeId}
+                disabled={node.status === "offline"}
+              >
+                {node.status === "offline" ? "\u25CB" : "\u25CF"}{" "}
+                {node.nodeName} ({node.nodeId})
+                {node.status === "offline" ? " [offline]" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      <div class="console-layout">
-        {/* Left Panel - Command Input & Results */}
-        <div class="console-main">
-          {/* Target Selection */}
-          <div class="console-target">
-            <label>Target Node</label>
-            <select id="console-target">
-              <option value="all">All Nodes</option>
-              {nodes.map((node) => (
-                <option
-                  value={node.nodeId}
-                  selected={selectedTarget === node.nodeId}
-                  disabled={node.status === "offline"}
-                >
-                  {node.status === "offline" ? "\u25CB" : "\u25CF"}{" "}
-                  {node.nodeName} ({node.nodeId})
-                  {node.status === "offline" ? " [offline]" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Input Areas */}
-          <div class="console-input-area">
-            <textarea
-              id="input-prompt"
-              class="console-textarea"
-              rows={6}
-              placeholder="Enter prompt for remote Claude..."
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div class="console-actions">
-            <button class="btn btn-primary" onclick="executeCommand()" id="btn-execute">
-              Execute
-            </button>
-            <button class="btn btn-secondary" onclick="clearConsole()">
-              Clear
-            </button>
-            <span class="hint">Ctrl+Enter to execute</span>
-          </div>
-
-          {/* Results */}
-          <div class="console-results" id="console-results">
-            <div class="empty-state text-muted">
-              Results will appear here after execution.
-            </div>
-          </div>
+      {/* Chat messages area */}
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-empty" id="chat-empty">
+          <div class="chat-empty-icon">💬</div>
+          <p>Send a prompt to start a conversation.</p>
+          <p class="text-muted">Messages and responses will appear here.</p>
         </div>
+      </div>
 
-        {/* Right Panel - Command History */}
-        <div class="console-sidebar">
-          <h3>
-            Command History (<span id="history-count">0</span>)
-          </h3>
-          <div class="history-list" id="history-list">
-            <div class="empty-state text-muted">No commands yet.</div>
-          </div>
-        </div>
+      {/* Chat input bar */}
+      <div class="chat-input-bar">
+        <textarea
+          id="chat-input"
+          class="chat-input"
+          rows={1}
+          placeholder="Type a message..."
+        />
+        <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">
+          <span class="chat-send-icon">▶</span>
+        </button>
       </div>
     </div>
   );

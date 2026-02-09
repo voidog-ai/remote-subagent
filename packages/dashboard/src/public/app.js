@@ -13,8 +13,6 @@
   const dashboardSecret = window.__DASHBOARD_SECRET__;
   let autoScroll = true;
 
-  const commandHistory = [];
-
   // --- Socket.IO Connection (ADR-15: /dashboard namespace) ---
   let socket = null;
 
@@ -249,8 +247,9 @@
     }
   }
 
-  // --- Console ---
-  let pendingTaskIds = new Set();
+  // --- Chat Console ---
+  let chatMessages = []; // { id, type, target, targetName, prompt, result, error, durationMs, taskId, timestamp, status }
+  let pendingTaskIds = new Map(); // taskId -> chatMessageId
 
   function updateConsoleTargets(nodes) {
     const select = document.getElementById("console-target");
@@ -270,25 +269,61 @@
     if (currentValue) select.value = currentValue;
   }
 
-  window.executeCommand = function () {
-    const target = document.getElementById("console-target")?.value;
+  function initChat() {
+    var chatInput = document.getElementById("chat-input");
+    if (!chatInput) return;
+
+    // Auto-resize textarea
+    chatInput.addEventListener("input", function () {
+      this.style.height = "auto";
+      this.style.height = Math.min(this.scrollHeight, 120) + "px";
+    });
+
+    // Ctrl+Enter or Enter to send
+    chatInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        window.sendChatMessage();
+      }
+    });
+  }
+
+  window.sendChatMessage = function () {
+    var target = document.getElementById("console-target")?.value;
     if (!target) return;
 
-    const prompt = document.getElementById("input-prompt")?.value?.trim();
+    var chatInput = document.getElementById("chat-input");
+    var prompt = chatInput?.value?.trim();
     if (!prompt) return;
 
-    const type = "prompt";
-    const payload = { type: "prompt", prompt };
+    // Get target name for display
+    var selectEl = document.getElementById("console-target");
+    var targetName = target === "all" ? "All Nodes" : (selectEl?.selectedOptions[0]?.textContent?.trim() || target);
 
-    // Show spinner
-    const results = document.getElementById("console-results");
-    if (results) {
-      results.innerHTML = '<div class="result-spinner"><div class="spinner"></div> Executing...</div>';
-    }
+    // Clear input
+    chatInput.value = "";
+    chatInput.style.height = "auto";
 
-    // Disable execute button
-    const btn = document.getElementById("btn-execute");
-    if (btn) btn.disabled = true;
+    // Remove empty state
+    var emptyEl = document.getElementById("chat-empty");
+    if (emptyEl) emptyEl.remove();
+
+    // Add sent message
+    var msgId = "msg-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+    var sentMsg = {
+      id: msgId,
+      type: "sent",
+      target: target,
+      targetName: targetName,
+      prompt: prompt,
+      timestamp: new Date().toISOString(),
+    };
+    chatMessages.push(sentMsg);
+    appendChatBubble(sentMsg);
+
+    // Disable send button
+    var sendBtn = document.getElementById("chat-send-btn");
+    if (sendBtn) sendBtn.disabled = true;
 
     // Send to API
     fetch("/api/command", {
@@ -296,146 +331,201 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         targetNodeId: target,
-        type,
-        payload,
+        type: "prompt",
+        payload: { type: "prompt", prompt: prompt },
       }),
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.taskId) {
-          pendingTaskIds.add(data.taskId);
-        }
-        if (data.taskIds) {
-          data.taskIds.forEach((id) => pendingTaskIds.add(id));
-        }
-
-        // Add to history
-        const historyItem = {
-          target,
-          type,
-          payload,
-          taskId: data.taskId || data.taskIds?.[0],
-          timestamp: new Date().toISOString(),
-          status: "pending",
-        };
-        commandHistory.unshift(historyItem);
-        updateHistoryList();
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        var taskIds = data.taskIds || (data.taskId ? [data.taskId] : []);
+        taskIds.forEach(function (taskId) {
+          // Add typing indicator for each task
+          var typingId = "typing-" + taskId;
+          var targetNodeId = data.targetNodeId || target;
+          var typingMsg = {
+            id: typingId,
+            type: "typing",
+            taskId: taskId,
+            targetNodeId: targetNodeId,
+            targetName: targetName,
+            output: "",
+            timestamp: new Date().toISOString(),
+          };
+          chatMessages.push(typingMsg);
+          appendChatBubble(typingMsg);
+          pendingTaskIds.set(taskId, typingId);
+        });
+        scrollChatToBottom();
       })
-      .catch((err) => {
-        if (results) {
-          results.innerHTML = `<div class="result-body error">Error: ${esc(err.message)}</div>`;
-        }
-        if (btn) btn.disabled = false;
+      .catch(function (err) {
+        // Show error as a received message
+        var errMsg = {
+          id: "err-" + Date.now(),
+          type: "received",
+          targetName: "System",
+          result: null,
+          error: { message: err.message },
+          timestamp: new Date().toISOString(),
+          status: "error",
+        };
+        chatMessages.push(errMsg);
+        appendChatBubble(errMsg);
+        if (sendBtn) sendBtn.disabled = false;
       });
   };
 
+  function appendChatBubble(msg) {
+    var container = document.getElementById("chat-messages");
+    if (!container) return;
+
+    var div = document.createElement("div");
+    div.id = msg.id;
+
+    if (msg.type === "sent") {
+      div.className = "chat-msg sent";
+      div.innerHTML =
+        '<div class="chat-avatar user">You</div>' +
+        '<div class="chat-bubble">' +
+          '<div class="chat-bubble-header">' +
+            '<span class="chat-bubble-sender">You</span>' +
+            '<span class="chat-bubble-target">\u2192 ' + esc(msg.targetName) + '</span>' +
+          '</div>' +
+          '<div class="chat-bubble-body">' + esc(msg.prompt) + '</div>' +
+          '<div class="chat-bubble-footer">' +
+            '<span>' + formatChatTime(msg.timestamp) + '</span>' +
+          '</div>' +
+        '</div>';
+    } else if (msg.type === "typing") {
+      div.className = "chat-msg received";
+      var nodeName = getNodeDisplayName(msg.targetNodeId) || msg.targetName;
+      div.innerHTML =
+        '<div class="chat-avatar node">' + getNodeAvatarLetter(msg.targetNodeId) + '</div>' +
+        '<div class="chat-bubble">' +
+          '<div class="chat-bubble-header">' +
+            '<span class="chat-bubble-sender">' + esc(nodeName) + '</span>' +
+          '</div>' +
+          '<div class="chat-typing-dots"><span></span><span></span><span></span></div>' +
+          '<div class="chat-streaming-text" id="stream-' + msg.taskId + '"></div>' +
+        '</div>';
+    } else if (msg.type === "received") {
+      div.className = "chat-msg received";
+      var isError = msg.status === "error";
+      var nodeName = getNodeDisplayName(msg.targetNodeId) || msg.targetName || "Node";
+      var body = isError
+        ? esc((msg.error?.code || "ERROR") + ": " + (msg.error?.message || "Unknown error"))
+        : esc(msg.result || "");
+      div.innerHTML =
+        '<div class="chat-avatar node">' + getNodeAvatarLetter(msg.targetNodeId) + '</div>' +
+        '<div class="chat-bubble' + (isError ? ' error' : '') + '">' +
+          '<button class="chat-copy-btn" onclick="copyChatBubble(this)">Copy</button>' +
+          '<div class="chat-bubble-header">' +
+            '<span class="chat-bubble-sender">' + esc(nodeName) + '</span>' +
+            '<span class="chat-bubble-status ' + (isError ? 'failed' : 'success') + '">' + (isError ? 'failed' : 'success') + '</span>' +
+          '</div>' +
+          '<div class="chat-bubble-body mono' + (isError ? ' error-text' : '') + '">' + body + '</div>' +
+          '<div class="chat-bubble-footer">' +
+            '<span>' + formatChatTime(msg.timestamp) + '</span>' +
+            (msg.durationMs ? '<span class="chat-bubble-duration">' + formatChatDuration(msg.durationMs) + '</span>' : '') +
+          '</div>' +
+        '</div>';
+    }
+
+    container.appendChild(div);
+    scrollChatToBottom();
+  }
+
   function handleTaskResult(result) {
-    if (!pendingTaskIds.has(result.taskId)) return;
+    var typingId = pendingTaskIds.get(result.taskId);
+    if (!typingId) return;
     pendingTaskIds.delete(result.taskId);
 
-    const results = document.getElementById("console-results");
-    if (results) {
-      const statusBadge = result.success
-        ? '<span class="badge badge-online">success</span>'
-        : '<span class="badge badge-offline">failed</span>';
+    // Remove typing bubble
+    var typingEl = document.getElementById(typingId);
+    if (typingEl) typingEl.remove();
 
-      const body = result.success
-        ? `<div class="result-body">${esc(result.result || "")}</div>`
-        : `<div class="result-body error">${esc(result.error?.code || "ERROR")}: ${esc(result.error?.message || "Unknown error")}</div>`;
+    // Add response bubble
+    var recvMsg = {
+      id: "recv-" + result.taskId,
+      type: "received",
+      taskId: result.taskId,
+      targetNodeId: result.targetNodeId,
+      targetName: result.targetNodeId,
+      result: result.success ? (result.result || "") : null,
+      error: result.success ? null : result.error,
+      durationMs: result.durationMs,
+      timestamp: new Date().toISOString(),
+      status: result.success ? "success" : "error",
+    };
+    chatMessages.push(recvMsg);
+    appendChatBubble(recvMsg);
 
-      const html = `
-        <div class="result-header">
-          <span class="result-source">${esc(result.targetNodeId)}</span>
-          ${statusBadge}
-          <span class="result-time">${result.durationMs}ms</span>
-          <button class="btn btn-secondary" onclick="copyResult(this)" style="margin-left:auto;padding:4px 8px;font-size:11px;">Copy</button>
-        </div>
-        ${body}
-      `;
-
-      const isSpinner = results.innerHTML.includes("result-spinner");
-      if (isSpinner) {
-        results.innerHTML = html;
-      } else {
-        results.innerHTML += "<hr style='border-color:var(--border);margin:12px 0'>" + html;
-      }
-    }
-
-    // Update history
-    const item = commandHistory.find((h) => h.taskId === result.taskId);
-    if (item) {
-      item.status = result.success ? "success" : "error";
-      item.durationMs = result.durationMs;
-      updateHistoryList();
-    }
-
-    // Re-enable button if no more pending
+    // Re-enable send button if no more pending
     if (pendingTaskIds.size === 0) {
-      const btn = document.getElementById("btn-execute");
+      var btn = document.getElementById("chat-send-btn");
       if (btn) btn.disabled = false;
     }
   }
 
   function handleTaskProgress(progress) {
-    // Keep spinner visible until final result arrives
-  }
-
-  function updateHistoryList() {
-    const list = document.getElementById("history-list");
-    const count = document.getElementById("history-count");
-    if (!list) return;
-    if (count) count.textContent = commandHistory.length;
-
-    if (commandHistory.length === 0) {
-      list.innerHTML = '<div class="empty-state text-muted">No commands yet.</div>';
-      return;
+    if (!progress.taskId) return;
+    var streamEl = document.getElementById("stream-" + progress.taskId);
+    if (streamEl) {
+      // Hide typing dots once we have output
+      var dots = streamEl.previousElementSibling;
+      if (dots && dots.classList.contains("chat-typing-dots")) {
+        dots.style.display = "none";
+      }
+      streamEl.textContent = (streamEl.textContent || "") + (progress.chunk || "");
+      streamEl.scrollTop = streamEl.scrollHeight;
+      scrollChatToBottom();
     }
-
-    list.innerHTML = commandHistory
-      .slice(0, 50)
-      .map(
-        (h) => `
-      <div class="history-item" onclick='restoreCommand(${JSON.stringify(h).replace(/'/g, "&#39;")})'>
-        <span class="history-icon ${h.status}">${h.status === "success" ? "\u2713" : h.status === "error" ? "\u2717" : "\u25CF"}</span>
-        <div class="history-info">
-          <div class="history-target">${esc(h.target)}</div>
-          <div class="history-command">${esc(getCommandPreview(h))}</div>
-        </div>
-        <div class="history-meta">
-          <span class="history-type-badge">prompt</span>
-          ${h.durationMs ? `<span>${h.durationMs}ms</span>` : ""}
-        </div>
-      </div>
-    `,
-      )
-      .join("");
   }
 
-  function getCommandPreview(h) {
-    return (h.payload.prompt || "").slice(0, 50);
-  }
-
-  window.restoreCommand = function (h) {
-    const targetEl = document.getElementById("console-target");
-    if (targetEl) targetEl.value = h.target;
-
-    const el = document.getElementById("input-prompt");
-    if (el) el.value = h.payload.prompt || "";
-  };
-
-  window.clearConsole = function () {
-    const results = document.getElementById("console-results");
-    if (results) {
-      results.innerHTML = '<div class="empty-state text-muted">Results will appear here after execution.</div>';
+  function scrollChatToBottom() {
+    var container = document.getElementById("chat-messages");
+    if (container) {
+      container.scrollTop = container.scrollHeight;
     }
-  };
+  }
 
-  window.copyResult = function (btn) {
-    const resultBody = btn.closest(".console-results")?.querySelector(".result-body");
-    if (resultBody) {
-      navigator.clipboard.writeText(resultBody.textContent);
+  function formatChatTime(isoString) {
+    return new Date(isoString).toLocaleTimeString("en-GB", { hour12: false, hour: "2-digit", minute: "2-digit" });
+  }
+
+  function formatChatDuration(ms) {
+    if (ms < 1000) return ms + "ms";
+    var s = (ms / 1000).toFixed(1);
+    return s + "s";
+  }
+
+  function getNodeDisplayName(nodeId) {
+    // Try to find from the select options
+    var select = document.getElementById("console-target");
+    if (!select) return nodeId;
+    for (var i = 0; i < select.options.length; i++) {
+      if (select.options[i].value === nodeId) {
+        // Extract name part before the (nodeId) parenthetical
+        var text = select.options[i].textContent.trim();
+        var match = text.match(/^[●○]\s*(.+?)\s*\(/);
+        return match ? match[1] : text;
+      }
+    }
+    return nodeId;
+  }
+
+  function getNodeAvatarLetter(nodeId) {
+    var name = getNodeDisplayName(nodeId);
+    if (!name) return "?";
+    return esc(name.charAt(0).toUpperCase());
+  }
+
+  window.copyChatBubble = function (btn) {
+    var bubble = btn.closest(".chat-bubble");
+    var body = bubble?.querySelector(".chat-bubble-body");
+    if (body) {
+      navigator.clipboard.writeText(body.textContent);
       btn.textContent = "Copied!";
-      setTimeout(() => (btn.textContent = "Copy"), 2000);
+      setTimeout(function () { btn.textContent = "Copy"; }, 2000);
     }
   };
 
@@ -544,12 +634,7 @@
   };
 
   // --- Keyboard Shortcuts ---
-  document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey && e.key === "Enter") {
-      e.preventDefault();
-      window.executeCommand();
-    }
-  });
+  // Removed Ctrl+Enter shortcut (chat uses Enter directly)
 
   // --- Helpers ---
   function formatTs(isoString) {
@@ -1274,4 +1359,5 @@
   reformatServerTimestamps();
   connectSocket();
   initGraph();
+  initChat();
 })();
