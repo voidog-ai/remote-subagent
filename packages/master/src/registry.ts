@@ -208,14 +208,14 @@ export class NodeRegistry {
   getStats(): {
     totalNodes: number;
     onlineNodes: number;
-    busyNodes: number;
+    runningNodes: number;
     mcpClients: number;
   } {
     const nodes = this.getAgentNodes();
     return {
       totalNodes: nodes.length,
       onlineNodes: nodes.filter((n) => n.status === "online").length,
-      busyNodes: nodes.filter((n) => n.status === "busy").length,
+      runningNodes: nodes.filter((n) => n.status === "running").length,
       mcpClients: this.mcpClients.size,
     };
   }

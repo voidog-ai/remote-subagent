@@ -8,7 +8,7 @@ interface NodesProps {
 
 export const NodesView: FC<NodesProps> = ({ nodes }) => {
   const onlineCount = nodes.filter((n) => n.status !== "offline").length;
-  const busyCount = nodes.filter((n) => n.status === "busy").length;
+  const runningCount = nodes.filter((n) => n.status === "running").length;
 
   return (
     <div class="page-nodes">
@@ -27,8 +27,8 @@ export const NodesView: FC<NodesProps> = ({ nodes }) => {
           <div class="summary-label">Online</div>
         </div>
         <div class="summary-card">
-          <div class="summary-value summary-busy">{busyCount}</div>
-          <div class="summary-label">Busy</div>
+          <div class="summary-value summary-busy">{runningCount}</div>
+          <div class="summary-label">Running</div>
         </div>
       </div>
 

@@ -148,7 +148,7 @@ html, body {
   background: var(--status-offline);
 }
 
-.status-dot.busy {
+.status-dot.busy, .status-dot.running {
   background: var(--status-busy);
   box-shadow: 0 0 6px var(--status-busy);
 }
@@ -173,7 +173,7 @@ html, body {
   color: var(--status-offline);
 }
 
-.badge-busy {
+.badge-busy, .badge-running {
   background: rgba(245, 158, 11, 0.15);
   color: var(--status-busy);
 }
@@ -1619,7 +1619,7 @@ html, body {
   background: linear-gradient(135deg, #14532d, #0d2818);
 }
 
-.graph-node-header.status-busy {
+.graph-node-header.status-busy, .graph-node-header.status-running {
   background: linear-gradient(135deg, #713f12, #422006);
 }
 
@@ -1661,7 +1661,7 @@ html, body {
   color: var(--status-online);
 }
 
-.graph-node-status.st-busy {
+.graph-node-status.st-busy, .graph-node-status.st-running {
   background: rgba(245, 158, 11, 0.2);
   color: var(--status-busy);
   animation: pulse 2s infinite;

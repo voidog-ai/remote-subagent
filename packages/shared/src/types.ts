@@ -1,7 +1,7 @@
 import type { ErrorCode, TaskError } from "./errors.js";
 
 // --- Node Info ---
-export type NodeStatus = "online" | "offline" | "busy";
+export type NodeStatus = "online" | "offline" | "running";
 export type ConnectionType = "agent" | "mcp";
 
 export interface NodeInfo {

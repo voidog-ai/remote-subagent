@@ -279,9 +279,9 @@
       this.style.height = Math.min(this.scrollHeight, 120) + "px";
     });
 
-    // Ctrl+Enter or Enter to send
+    // Shift+Enter to send (Enter = newline, avoids IME composition issues)
     chatInput.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === "Enter" && e.shiftKey && !e.isComposing) {
         e.preventDefault();
         window.sendChatMessage();
       }
@@ -857,8 +857,12 @@
       return { x: node.x + NODE_W / 2, y: node.y + NODE_H / 2 };
     }
 
-    function tv(v) {
-      return (v * graphState.zoom).toFixed(1);
+    function tx(v) {
+      return (v * graphState.zoom + graphState.pan.x).toFixed(1);
+    }
+
+    function ty(v) {
+      return (v * graphState.zoom + graphState.pan.y).toFixed(1);
     }
 
     function getConnectionGroups() {
@@ -951,7 +955,7 @@
 
       var mx = (sp.x + tp.x) / 2;
       var my = (sp.y + tp.y) / 2 - 50;
-      var d = "M" + tv(sp.x) + "," + tv(sp.y) + " Q" + tv(mx) + "," + tv(my) + " " + tv(tp.x) + "," + tv(tp.y);
+      var d = "M" + tx(sp.x) + "," + ty(sp.y) + " Q" + tx(mx) + "," + ty(my) + " " + tx(tp.x) + "," + ty(tp.y);
       var colorHex = "#3b82f6";
 
       addGlowPath(d, colorHex);
@@ -978,7 +982,7 @@
       var mx = (spOff.x + tpOff.x) / 2 + perpX * offset * 1.5;
       var my = (spOff.y + tpOff.y) / 2 + perpY * offset * 1.5 - 30 * offset;
 
-      var d = "M" + tv(spOff.x) + "," + tv(spOff.y) + " Q" + tv(mx) + "," + tv(my) + " " + tv(tpOff.x) + "," + tv(tpOff.y);
+      var d = "M" + tx(spOff.x) + "," + ty(spOff.y) + " Q" + tx(mx) + "," + ty(my) + " " + tx(tpOff.x) + "," + ty(tpOff.y);
       var colorHex = offset === 1 ? "#22c55e" : "#7c3aed";
       var arrowId = offset === 1 ? "graph-arrow-green" : "graph-arrow-purple";
 
@@ -1000,7 +1004,7 @@
       var cx3 = r.x - 10, cy3 = r.y + 290;
       var cx4 = r.x - 50, cy4 = r.y + 220;
 
-      var d = "M" + tv(bx1) + "," + tv(by1) + " C" + tv(cx1) + "," + tv(cy1) + " " + tv(cx2) + "," + tv(cy2) + " " + tv((cx2 + cx3) / 2) + "," + tv(cy2) + " C" + tv(cx3) + "," + tv(cy2) + " " + tv(cx4) + "," + tv(cy4) + " " + tv(bx2) + "," + tv(by2);
+      var d = "M" + tx(bx1) + "," + ty(by1) + " C" + tx(cx1) + "," + ty(cy1) + " " + tx(cx2) + "," + ty(cy2) + " " + tx((cx2 + cx3) / 2) + "," + ty(cy2) + " C" + tx(cx3) + "," + ty(cy2) + " " + tx(cx4) + "," + ty(cy4) + " " + tx(bx2) + "," + ty(by2);
       var colorHex = "#f59e0b";
 
       addGlowPath(d, colorHex);

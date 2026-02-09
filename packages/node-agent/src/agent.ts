@@ -139,7 +139,7 @@ export class NodeAgent {
 
   private sendHeartbeat(): void {
     const status: NodeStatus = this.taskQueue.isProcessing()
-      ? "busy"
+      ? "running"
       : "online";
 
     const heartbeat: HeartbeatPayload = {

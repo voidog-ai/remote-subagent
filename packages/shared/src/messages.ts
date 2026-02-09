@@ -25,7 +25,7 @@ export const AuthPayloadSchema = z.object({
 // --- Heartbeat Schema (ADR-16: metrics integrated) ---
 export const HeartbeatPayloadSchema = z.object({
   nodeId: z.string().min(1),
-  status: z.enum(["online", "offline", "busy"]),
+  status: z.enum(["online", "offline", "running"]),
   currentTaskId: z.string().nullable(),
   queueLength: z.number().int().min(0),
   metrics: SystemMetricsSchema,
