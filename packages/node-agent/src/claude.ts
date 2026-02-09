@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
+import { isAbsolute } from "node:path";
 import type { PromptPayload, TaskProgress } from "@remote-subagent/shared";
 
 interface TaskExecution {
@@ -63,7 +64,7 @@ export class ClaudeSession {
 
       const cwd = task.cwd && existsSync(task.cwd) ? task.cwd : process.env.HOME || process.cwd();
 
-      if (!existsSync(this.claudePath)) {
+      if (isAbsolute(this.claudePath) && !existsSync(this.claudePath)) {
         reject(new Error(`Claude CLI not found at: ${this.claudePath}`));
         return;
       }
