@@ -13,6 +13,9 @@ interface SettingsProps {
   };
   masterUrl: string;
   masterPort: string;
+  settings?: {
+    sessionPersistence: boolean;
+  };
 }
 
 function formatUptime(ms: number): string {
@@ -27,7 +30,10 @@ export const SettingsView: FC<SettingsProps> = ({
   metrics,
   masterUrl,
   masterPort,
+  settings,
 }) => {
+  const sessionPersistence = settings?.sessionPersistence ?? true;
+
   return (
     <div class="page-settings">
       <div class="page-header">
@@ -53,6 +59,34 @@ export const SettingsView: FC<SettingsProps> = ({
           <div class="settings-row">
             <span class="settings-label">Uptime</span>
             <span class="settings-value">{formatUptime(metrics.uptimeMs)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Session Persistence */}
+      <div class="settings-section">
+        <h3>Session Persistence</h3>
+        <div class="settings-card">
+          <p class="text-muted">
+            When enabled, remote Claude Code conversations retain their history
+            across multiple send_prompt calls using session IDs. Disable to run
+            all prompts statelessly.
+          </p>
+          <div class="settings-row">
+            <span class="settings-label">Status</span>
+            <span class="settings-value">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input
+                  type="checkbox"
+                  id="session-persistence-toggle"
+                  checked={sessionPersistence}
+                  onchange="toggleSessionPersistence(this.checked)"
+                />
+                <span id="session-persistence-label">
+                  {sessionPersistence ? "Enabled" : "Disabled"}
+                </span>
+              </label>
+            </span>
           </div>
         </div>
       </div>

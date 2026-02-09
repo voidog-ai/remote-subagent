@@ -18,7 +18,11 @@ export class TaskExecutor {
 
   constructor(config: AgentConfig) {
     this.config = config;
-    this.claude = new ClaudeSession(config.claudeModel, config.claudePath);
+    this.claude = new ClaudeSession(
+      config.claudeModel,
+      config.claudePath,
+      config.sessionPersistence,
+    );
   }
 
   setOnProgress(callback: (progress: TaskProgress) => void): void {
@@ -34,8 +38,6 @@ export class TaskExecutor {
     const startedAt = Date.now();
 
     try {
-      let result: string;
-
       if (request.payload.type !== "prompt") {
         throw createTaskError(
           "EXECUTION_ERROR",
@@ -43,13 +45,14 @@ export class TaskExecutor {
         );
       }
 
-      result = await this.executePrompt(
+      const { output, sessionId } = await this.executePrompt(
         request.payload as PromptPayload,
         request.taskId,
         request.context,
       );
 
       // Truncate result if too large
+      let result = output;
       if (result.length > TASK_RESULT_MAX_LENGTH) {
         result =
           result.substring(0, TASK_RESULT_MAX_LENGTH) +
@@ -64,6 +67,7 @@ export class TaskExecutor {
         result,
         durationMs: Date.now() - startedAt,
         completedAt: new Date().toISOString(),
+        ...(sessionId && { sessionId }),
       };
     } catch (err: unknown) {
       const validCodes: Set<string> = new Set(Object.values(ErrorCodes));
@@ -97,7 +101,7 @@ export class TaskExecutor {
     payload: PromptPayload,
     taskId: string,
     context?: string,
-  ): Promise<string> {
+  ): Promise<{ output: string; sessionId?: string }> {
     return this.claude.executeTask(
       payload,
       taskId,

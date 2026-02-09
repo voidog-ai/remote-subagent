@@ -10,6 +10,7 @@ import {
   type TaskResult,
   type TaskProgress,
   type NodeInfo,
+  type SessionInfo,
 } from "@remote-subagent/shared";
 
 interface PendingRequest {
@@ -221,6 +222,50 @@ export class SocketClient {
 
   async cancelTask(taskId: string): Promise<void> {
     this.socket.emit(C2S.TASK_CANCEL, { taskId });
+  }
+
+  async listSessions(nodeId?: string): Promise<SessionInfo[]> {
+    return new Promise((resolve, reject) => {
+      if (!this.connected) {
+        reject(new Error("Not connected to master"));
+        return;
+      }
+
+      const timer = setTimeout(() => {
+        reject(new Error("List sessions timed out"));
+      }, 10_000);
+
+      this.socket.emit(
+        C2S.LIST_SESSIONS,
+        { nodeId },
+        (sessions: SessionInfo[]) => {
+          clearTimeout(timer);
+          resolve(sessions);
+        },
+      );
+    });
+  }
+
+  async deleteSession(sessionId: string): Promise<{ success: boolean }> {
+    return new Promise((resolve, reject) => {
+      if (!this.connected) {
+        reject(new Error("Not connected to master"));
+        return;
+      }
+
+      const timer = setTimeout(() => {
+        reject(new Error("Delete session timed out"));
+      }, 10_000);
+
+      this.socket.emit(
+        C2S.DELETE_SESSION,
+        { sessionId },
+        (result: { success: boolean }) => {
+          clearTimeout(timer);
+          resolve(result);
+        },
+      );
+    });
   }
 
   isConnected(): boolean {

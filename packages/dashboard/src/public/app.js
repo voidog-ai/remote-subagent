@@ -825,6 +825,27 @@
     }
   };
 
+  window.toggleSessionPersistence = function (enabled) {
+    fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionPersistence: enabled }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const label = document.getElementById("session-persistence-label");
+        if (label) {
+          label.textContent = data.sessionPersistence ? "Enabled" : "Disabled";
+        }
+      })
+      .catch((err) => {
+        alert("Error updating setting: " + err.message);
+        // Revert checkbox
+        const toggle = document.getElementById("session-persistence-toggle");
+        if (toggle) toggle.checked = !enabled;
+      });
+  };
+
   // --- Keyboard Shortcuts ---
   // Removed Ctrl+Enter shortcut (chat uses Enter directly)
 

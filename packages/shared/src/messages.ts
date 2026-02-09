@@ -39,6 +39,7 @@ export const PromptPayloadSchema = z.object({
   cwd: z.string().optional(),
   model: z.string().optional(),
   maxTurns: z.number().int().positive().optional(),
+  sessionId: z.string().uuid().optional(),
 });
 
 export const TaskPayloadSchema = PromptPayloadSchema;
@@ -71,6 +72,7 @@ export const TaskErrorSchema = z.object({
     "SDK_ERROR",
     "CONNECTION_ERROR",
     "AUTH_FAILED",
+    "SESSION_NOT_FOUND",
     "UNKNOWN",
   ]),
   message: z.string(),
@@ -87,6 +89,7 @@ export const TaskResultSchema = z.object({
   error: TaskErrorSchema.optional(),
   durationMs: z.number(),
   completedAt: z.string(),
+  sessionId: z.string().uuid().optional(),
 });
 
 // --- Task Progress Schema ---

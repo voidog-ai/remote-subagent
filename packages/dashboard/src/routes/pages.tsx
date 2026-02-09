@@ -119,7 +119,10 @@ export function createPageRoutes(
   });
 
   pages.get("/settings", async (c) => {
-    const metrics = await fetchMaster("/api/metrics");
+    const [metrics, settings] = await Promise.all([
+      fetchMaster("/api/metrics"),
+      fetchMaster("/api/settings"),
+    ]);
     const port = new URL(masterUrl).port || "3100";
 
     const html = (
@@ -134,6 +137,7 @@ export function createPageRoutes(
           metrics={metrics}
           masterUrl={masterUrl}
           masterPort={port}
+          settings={settings}
         />
       </Layout>
     );

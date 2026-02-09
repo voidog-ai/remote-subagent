@@ -7,3 +7,5 @@ export const MAX_QUEUE_SIZE = 10;
 export const LOG_BUFFER_SIZE = 10_000;
 export const TASK_RESULT_MAX_LENGTH = 500 * 1024; // 500KB
 export const TASK_HISTORY_MAX_SIZE = 1000;
+export const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const SESSION_CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour

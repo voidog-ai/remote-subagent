@@ -6,6 +6,8 @@ import { registerListNodes } from "./tools/list-nodes.js";
 import { registerSendPrompt } from "./tools/send-prompt.js";
 import { registerBroadcastPrompt } from "./tools/broadcast-prompt.js";
 import { registerCancelTask } from "./tools/cancel-task.js";
+import { registerListSessions } from "./tools/list-sessions.js";
+import { registerDeleteSession } from "./tools/delete-session.js";
 
 const nodeId = process.env.MCP_NODE_ID || "mcp-client";
 const masterUrl = process.env.MCP_MASTER_URL || "http://localhost:3100";
@@ -32,6 +34,8 @@ registerListNodes(mcpServer, socketClient);
 registerSendPrompt(mcpServer, socketClient);
 registerBroadcastPrompt(mcpServer, socketClient);
 registerCancelTask(mcpServer, socketClient);
+registerListSessions(mcpServer, socketClient);
+registerDeleteSession(mcpServer, socketClient);
 
 // Start MCP server with stdio transport
 const transport = new StdioServerTransport();

@@ -18,6 +18,7 @@ import { NodeRegistry } from "./registry.js";
 import { MessageRouter } from "./router.js";
 import { Logger } from "./logger.js";
 import { RestApi } from "./api.js";
+import { SessionManager } from "./session-manager.js";
 
 export interface MasterConfig {
   port: number;
@@ -52,11 +53,12 @@ export async function startMasterServer(config: MasterConfig) {
 
   const logger = new Logger(io);
   const registry = new NodeRegistry(io, logger);
-  const router = new MessageRouter(io, registry, logger);
+  const sessionManager = new SessionManager();
+  const router = new MessageRouter(io, registry, logger, sessionManager);
   const api = new RestApi(registry, router, logger, {
     dashboardSecret: config.dashboardSecret,
     jwtSecret: config.jwtSecret,
-  });
+  }, sessionManager);
 
   const jwtSecretKey = new TextEncoder().encode(config.jwtSecret);
 
@@ -164,6 +166,28 @@ export async function startMasterServer(config: MasterConfig) {
         callback(nodes);
       } else {
         socket.emit(S2C.NODES_LIST, nodes);
+      }
+    });
+
+    // List sessions (for MCP)
+    socket.on(C2S.LIST_SESSIONS, (data: any, callback: (sessions: unknown) => void) => {
+      if (typeof data === "function") {
+        // No data arg, data is the callback
+        const sessions = sessionManager.listSessions();
+        data(sessions);
+      } else {
+        const sessions = sessionManager.listSessions(data?.nodeId);
+        if (typeof callback === "function") {
+          callback(sessions);
+        }
+      }
+    });
+
+    // Delete session (for MCP)
+    socket.on(C2S.DELETE_SESSION, (data: any, callback: (result: unknown) => void) => {
+      const deleted = sessionManager.deleteSession(data?.sessionId);
+      if (typeof callback === "function") {
+        callback({ success: deleted });
       }
     });
 

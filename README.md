@@ -27,7 +27,7 @@ Interconnect Claude Code instances across multiple PCs (MacBook Pro, Surface Pro
 | `packages/shared` | Shared types, Zod schemas, Socket.IO event constants |
 | `packages/master` | Master server (Socket.IO + JWT auth + REST API) |
 | `packages/node-agent` | Node agent (task execution, Claude process, metrics) |
-| `packages/mcp-server` | MCP server (7 tools for Claude Code integration) |
+| `packages/mcp-server` | MCP server (9 tools for Claude Code integration) |
 | `packages/dashboard` | Web dashboard (Hono + JSX + real-time Socket.IO) |
 
 ## Setup
@@ -61,6 +61,9 @@ DASHBOARD_PORT=3200
 DASHBOARD_USER=admin
 DASHBOARD_PASSWORD=your-password
 MASTER_URL=http://your-server:3100
+
+# Session persistence (default: true)
+SESSION_PERSISTENCE=true
 
 # Node agent (each client PC)
 NODE_ID=macbook-pro
@@ -112,17 +115,19 @@ The MCP server requires `MCP_NODE_ID`, `MCP_MASTER_URL`, and `MCP_TOKEN` environ
 
 ## MCP Tools
 
-Seven tools available from within Claude Code:
+Nine tools available from within Claude Code:
 
 | Tool | Description |
 |---|---|
 | `list_nodes` | List all connected agent nodes with status and metrics |
-| `send_prompt` | Send a prompt to a remote Claude instance (supports `context` parameter for sharing conversation context) |
+| `send_prompt` | Send a prompt to a remote Claude instance. Supports `context`, `session_id` (resume conversation), and `new_session` (force fresh) parameters |
 | `execute_command` | Execute a shell command on a remote node |
 | `read_remote_file` | Read a file from a remote node |
 | `write_remote_file` | Write a file to a remote node |
 | `broadcast_prompt` | Send the same prompt to all online nodes simultaneously |
 | `cancel_task` | Cancel a running task by ID |
+| `list_sessions` | List active conversation sessions (optionally filter by `node_id`) |
+| `delete_session` | Delete a conversation session from tracking |
 
 ### Usage Examples
 
@@ -134,6 +139,31 @@ read_remote_file target=windows-desktop file_path="C:\Users\dev\config.json"
 broadcast_prompt prompt="Report your Node.js version"
 cancel_task task_id="abc-123"
 ```
+
+### Session Persistence (Multi-Turn Conversations)
+
+By default, each `send_prompt` call creates a new session and returns a session ID. Pass this ID back to resume the conversation with full history:
+
+```
+# Start a new conversation
+send_prompt target=macbook-pro prompt="Let's refactor the auth module"
+# Result includes: [Session: abc-123-def]
+
+# Continue the same conversation (remote Claude remembers context)
+send_prompt target=macbook-pro prompt="Now add unit tests for the changes" session_id="abc-123-def"
+
+# Force a fresh session even with an existing session_id
+send_prompt target=macbook-pro prompt="Start over" session_id="abc-123-def" new_session=true
+
+# List all active sessions
+list_sessions
+list_sessions node_id=macbook-pro
+
+# Clean up a session
+delete_session session_id="abc-123-def"
+```
+
+Session persistence can be toggled via the Dashboard Settings page or the REST API (`PUT /api/settings`). When disabled, all prompts run statelessly without session tracking.
 
 ## Reverse Proxy Setup
 
@@ -233,7 +263,7 @@ Access at `http://your-server:3200` (Basic Auth protected).
 | Nodes | `/nodes` | Expandable node cards with CPU/memory/disk metrics, connection info |
 | Logs | `/logs` | Real-time log stream with level/source filters, CSV export |
 | Console | `/console` | Command execution (Prompt / Shell / File Read / File Write tabs) |
-| Settings | `/settings` | Server info, token generation, system configuration |
+| Settings | `/settings` | Server info, session persistence toggle, token generation, system configuration |
 
 All pages update in real-time via Socket.IO.
 
@@ -274,6 +304,8 @@ File paths are treated as absolute paths on the target machine and normalized by
 | `MAX_QUEUE_SIZE` | 10 | Max queued tasks per node |
 | `LOG_BUFFER_SIZE` | 10,000 | Circular log buffer capacity |
 | `TASK_RESULT_MAX_LENGTH` | 500 KB | Max result payload size |
+| `SESSION_TTL_MS` | 86,400,000 | Session time-to-live (24 hours) |
+| `SESSION_CLEANUP_INTERVAL_MS` | 3,600,000 | Session cleanup check interval (1 hour) |
 
 ## Communication Flows
 
@@ -295,6 +327,24 @@ MacBook Claude Code
 cancel_task / Dashboard / Timeout
   -> Master Router -> TASK_CANCEL -> node-agent
   -> AbortController.abort() -> CANCELLED result returned
+```
+
+### Session Persistence
+
+```
+First call (no session_id):
+  -> node-agent generates UUID, spawns "claude --session-id <uuid>"
+  -> Result includes sessionId -> Master registers in SessionManager
+  -> MCP tool returns [Session: <uuid>] to caller
+
+Subsequent call (with session_id):
+  -> Master validates session-node affinity (SESSION_NOT_FOUND if mismatch)
+  -> node-agent spawns "claude --resume <uuid>"
+  -> Remote Claude has full conversation history
+
+Session cleanup:
+  -> SessionManager auto-expires sessions after 24 hours of inactivity
+  -> Manual deletion via delete_session tool or DELETE /api/sessions/:id
 ```
 
 ### Master Restart Recovery

@@ -8,17 +8,22 @@ import {
 import type { NodeRegistry } from "./registry.js";
 import type { MessageRouter } from "./router.js";
 import type { Logger } from "./logger.js";
+import type { SessionManager } from "./session-manager.js";
 
 export class RestApi {
   private dashboardSecret: string;
   private jwtSecret: string;
   private startTime = Date.now();
+  private settings = {
+    sessionPersistence: process.env.SESSION_PERSISTENCE !== "false",
+  };
 
   constructor(
     private registry: NodeRegistry,
     private router: MessageRouter,
     private logger: Logger,
     config: { dashboardSecret: string; jwtSecret: string },
+    private sessionManager?: SessionManager,
   ) {
     this.dashboardSecret = config.dashboardSecret;
     this.jwtSecret = config.jwtSecret;
@@ -49,7 +54,7 @@ export class RestApi {
 
     // CORS headers
     res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.setHeader(
       "Access-Control-Allow-Headers",
       "Content-Type, X-Dashboard-Secret",
@@ -77,6 +82,15 @@ export class RestApi {
       } else if (url.pathname.startsWith("/api/tasks/") && req.method === "DELETE") {
         const taskId = url.pathname.split("/api/tasks/")[1];
         await this.handleCancelTask(res, taskId);
+      } else if (url.pathname === "/api/sessions" && req.method === "GET") {
+        await this.handleGetSessions(res, url);
+      } else if (url.pathname.startsWith("/api/sessions/") && req.method === "DELETE") {
+        const sessionId = url.pathname.split("/api/sessions/")[1];
+        await this.handleDeleteSession(res, sessionId);
+      } else if (url.pathname === "/api/settings" && req.method === "GET") {
+        await this.handleGetSettings(res);
+      } else if (url.pathname === "/api/settings" && req.method === "PUT") {
+        await this.handlePutSettings(req, res);
       } else {
         res.writeHead(404, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Not found" }));
@@ -252,6 +266,68 @@ export class RestApi {
       res.writeHead(404, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Task not found or already completed" }));
     }
+  }
+
+  private async handleGetSessions(
+    res: ServerResponse,
+    url: URL,
+  ): Promise<void> {
+    if (!this.sessionManager) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify([]));
+      return;
+    }
+    const nodeId = url.searchParams.get("nodeId") || undefined;
+    const sessions = this.sessionManager.listSessions(nodeId);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(sessions));
+  }
+
+  private async handleDeleteSession(
+    res: ServerResponse,
+    sessionId: string,
+  ): Promise<void> {
+    if (!this.sessionManager) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Session management not available" }));
+      return;
+    }
+    const deleted = this.sessionManager.deleteSession(sessionId);
+    if (deleted) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, sessionId }));
+    } else {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Session not found" }));
+    }
+  }
+
+  private async handleGetSettings(res: ServerResponse): Promise<void> {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(this.settings));
+  }
+
+  private async handlePutSettings(
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> {
+    const body = await readBody(req);
+    const updates = JSON.parse(body);
+
+    if (typeof updates.sessionPersistence === "boolean") {
+      this.settings.sessionPersistence = updates.sessionPersistence;
+      this.logger.info(
+        "api",
+        `Session persistence ${updates.sessionPersistence ? "enabled" : "disabled"}`,
+      );
+    }
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(this.settings));
+  }
+
+  getSettings(): { sessionPersistence: boolean } {
+    return this.settings;
   }
 }
 

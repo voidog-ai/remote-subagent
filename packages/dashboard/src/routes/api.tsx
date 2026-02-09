@@ -93,5 +93,41 @@ export function createApiRoutes(
     });
   });
 
+  // GET /api/sessions
+  api.get("/sessions", async (c) => {
+    const params = new URL(c.req.url).searchParams.toString();
+    const path = `/api/sessions${params ? `?${params}` : ""}`;
+    const result = await proxyToMaster(path, "GET");
+    return c.body(result.body, result.status as any, {
+      "Content-Type": result.contentType,
+    });
+  });
+
+  // DELETE /api/sessions/:id
+  api.delete("/sessions/:id", async (c) => {
+    const id = c.req.param("id");
+    const result = await proxyToMaster(`/api/sessions/${id}`, "DELETE");
+    return c.body(result.body, result.status as any, {
+      "Content-Type": result.contentType,
+    });
+  });
+
+  // GET /api/settings
+  api.get("/settings", async (c) => {
+    const result = await proxyToMaster("/api/settings", "GET");
+    return c.body(result.body, result.status as any, {
+      "Content-Type": result.contentType,
+    });
+  });
+
+  // PUT /api/settings
+  api.put("/settings", async (c) => {
+    const body = await c.req.text();
+    const result = await proxyToMaster("/api/settings", "PUT", body);
+    return c.body(result.body, result.status as any, {
+      "Content-Type": result.contentType,
+    });
+  });
+
   return api;
 }

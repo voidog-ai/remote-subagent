@@ -1,10 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import type { PromptPayload, TaskProgress } from "@remote-subagent/shared";
 
 interface TaskExecution {
-  resolve: (result: string) => void;
+  resolve: (result: { output: string; sessionId?: string }) => void;
   reject: (error: Error) => void;
   abortController: AbortController;
   taskId: string;
@@ -13,14 +14,15 @@ interface TaskExecution {
 export class ClaudeSession {
   private process: ChildProcess | null = null;
   private currentExecution: TaskExecution | null = null;
-  private sessionId: string | undefined;
   private model: string;
   private claudePath: string;
+  private sessionPersistence: boolean;
   private outputBuffer = "";
 
-  constructor(model: string, claudePath = "claude") {
+  constructor(model: string, claudePath = "claude", sessionPersistence = true) {
     this.model = model;
     this.claudePath = claudePath;
+    this.sessionPersistence = sessionPersistence;
   }
 
   async executeTask(
@@ -28,7 +30,7 @@ export class ClaudeSession {
     taskId: string,
     context?: string,
     onProgress?: (progress: Omit<TaskProgress, "nodeId">) => void,
-  ): Promise<string> {
+  ): Promise<{ output: string; sessionId?: string }> {
     const abortController = new AbortController();
 
     // Build prompt with context
@@ -38,7 +40,23 @@ export class ClaudeSession {
     }
     fullPrompt += task.prompt;
 
-    return new Promise<string>((resolve, reject) => {
+    // Determine session flags
+    let sessionId: string | undefined;
+    const sessionArgs: string[] = [];
+
+    if (this.sessionPersistence) {
+      if (task.sessionId) {
+        // Resume existing session
+        sessionArgs.push("--resume", task.sessionId);
+        sessionId = task.sessionId;
+      } else {
+        // Start new session
+        sessionId = randomUUID();
+        sessionArgs.push("--session-id", sessionId);
+      }
+    }
+
+    return new Promise<{ output: string; sessionId?: string }>((resolve, reject) => {
       this.currentExecution = {
         resolve,
         reject,
@@ -56,6 +74,7 @@ export class ClaudeSession {
         "text",
         "--model",
         task.model || this.model,
+        ...sessionArgs,
       ];
 
       if (task.maxTurns) {
@@ -130,7 +149,10 @@ export class ClaudeSession {
           return;
         }
 
-        execution.resolve(this.outputBuffer.trim());
+        execution.resolve({
+          output: this.outputBuffer.trim(),
+          sessionId,
+        });
       });
 
       claudeProcess.on("error", (err) => {
@@ -152,10 +174,6 @@ export class ClaudeSession {
     if (this.process) {
       this.process.kill("SIGTERM");
     }
-  }
-
-  getSessionId(): string | undefined {
-    return this.sessionId;
   }
 
   isRunning(): boolean {

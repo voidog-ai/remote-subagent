@@ -37,6 +37,7 @@ export interface PromptPayload {
   cwd?: string;
   model?: string;
   maxTurns?: number;
+  sessionId?: string;
 }
 
 export type TaskPayload = PromptPayload;
@@ -65,6 +66,16 @@ export interface TaskResult {
   error?: TaskError;
   durationMs: number;
   completedAt: string;
+  sessionId?: string;
+}
+
+// --- Session Info ---
+export interface SessionInfo {
+  sessionId: string;
+  targetNodeId: string;
+  createdAt: string;
+  lastUsedAt: string;
+  messageCount: number;
 }
 
 // --- Log Entry ---

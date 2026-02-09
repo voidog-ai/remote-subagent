@@ -11,6 +11,7 @@ import {
 } from "@remote-subagent/shared";
 import type { NodeRegistry } from "./registry.js";
 import type { Logger } from "./logger.js";
+import type { SessionManager } from "./session-manager.js";
 
 type NodeLookupResult =
   | { node: import("@remote-subagent/shared").NodeInfo; socket: import("socket.io").Socket }
@@ -37,9 +38,38 @@ export class MessageRouter {
     private io: SocketIOServer,
     private registry: NodeRegistry,
     private logger: Logger,
+    private sessionManager?: SessionManager,
   ) {}
 
   routeTask(sourceSocket: Socket, request: TaskRequest): void {
+    // Validate session-node affinity if sessionId is present
+    const payloadSessionId = request.payload.sessionId;
+    if (payloadSessionId && this.sessionManager) {
+      const validation = this.sessionManager.validateSessionNode(
+        payloadSessionId,
+        request.targetNodeId,
+      );
+      if (!validation.valid) {
+        const errorResult: TaskResult = {
+          taskId: request.taskId,
+          sourceNodeId: request.sourceNodeId,
+          targetNodeId: request.targetNodeId,
+          success: false,
+          error: createTaskError("SESSION_NOT_FOUND", validation.reason!),
+          durationMs: 0,
+          completedAt: new Date().toISOString(),
+        };
+        sourceSocket.emit(S2C.TASK_RESPONSE, errorResult);
+        this.logger.warn(
+          "router",
+          `Task ${request.taskId} rejected: session affinity violation - ${validation.reason}`,
+          undefined,
+          request.taskId,
+        );
+        return;
+      }
+    }
+
     // Check if target node exists and is reachable
     const lookup = this.registry.getNodeForTask(request.targetNodeId);
     if (lookup.error) {
@@ -144,6 +174,14 @@ export class MessageRouter {
     // Clear timeout
     clearTimeout(pending.timeoutTimer);
     this.pendingTasks.delete(taskResult.taskId);
+
+    // Register session tracking if sessionId is present
+    if (taskResult.sessionId && taskResult.success && this.sessionManager) {
+      this.sessionManager.registerSession(
+        taskResult.sessionId,
+        taskResult.targetNodeId,
+      );
+    }
 
     // Add to history with prompt data from original request
     this.addToHistory(taskResult, pending.request);

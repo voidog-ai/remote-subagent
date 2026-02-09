@@ -7,6 +7,8 @@ export const C2S = {
   TASK_CANCEL: "task:cancel",
   TASK_PROGRESS: "task:progress",
   LIST_NODES: "list:nodes",
+  LIST_SESSIONS: "list:sessions",
+  DELETE_SESSION: "delete:session",
 } as const;
 
 /** Server → Client events (default namespace, for node-agent/mcp-server) */

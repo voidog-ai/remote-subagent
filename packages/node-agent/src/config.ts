@@ -9,6 +9,8 @@ export interface AgentConfig {
   // Task
   maxQueueSize: number;
   maxTaskTimeoutMs: number;
+  // Session
+  sessionPersistence: boolean;
 }
 
 export function loadConfig(): AgentConfig {
@@ -25,5 +27,6 @@ export function loadConfig(): AgentConfig {
       process.env.MAX_TASK_TIMEOUT_MS || "300000",
       10,
     ),
+    sessionPersistence: process.env.SESSION_PERSISTENCE !== "false",
   };
 }
